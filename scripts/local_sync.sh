@@ -1,3 +1,4 @@
+proxy_on
 set -e
 
 BRANCH="main"

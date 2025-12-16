@@ -1,0 +1,16 @@
+[project]
+name = "vermind"
+version = "0.1.0"
+description = "vermind, learn llm by coding (my record)."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "swanlab>=0.7.4",
+    "torch==2.8.0",
+    "torchaudio>=2.8.0",
+    "torchvision>=0.23.0",
+]
+
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true

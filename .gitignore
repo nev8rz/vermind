@@ -5,3 +5,4 @@ output
 uv.lock
 
 # scripts/*_sync.sh
+.DS_Store

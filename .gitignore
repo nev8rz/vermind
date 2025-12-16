@@ -3,3 +3,5 @@ output
 .venv
 .python-version
 uv.lock
+
+# scripts/*_sync.sh

@@ -3,6 +3,12 @@ output
 .venv
 .python-version
 uv.lock
+.ruff_cache
+__pycache__/
 
 # scripts/*_sync.sh
 .DS_Store
+
+
+# data
+*.bin

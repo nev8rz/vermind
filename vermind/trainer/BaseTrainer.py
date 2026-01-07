@@ -1,2 +1,0 @@
-class BaseTrainer:
-    pass

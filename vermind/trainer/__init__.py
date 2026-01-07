@@ -1,2 +1,0 @@
-
-from .GPT2Traner 

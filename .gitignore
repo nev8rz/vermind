@@ -5,6 +5,7 @@ output
 uv.lock
 .ruff_cache
 __pycache__/
+*.egg-info
 
 # scripts/*_sync.sh
 .DS_Store
@@ -12,3 +13,6 @@ __pycache__/
 
 # data
 *.bin
+
+# log
+swanlog

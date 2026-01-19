@@ -4,8 +4,8 @@ from pathlib import Path
 from tokenizers import decoders, models, pre_tokenizers, trainers, Tokenizer
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DATA_PATH = PROJECT_ROOT / "dataset" / "pretrain_hq.jsonl"
-TOKENIZER_DIR = PROJECT_ROOT / "vermind_tokenizer"
+TOKENIZER_DIR = (PROJECT_ROOT / "vermind_tokenizer").as_posix()
+DATA_PATH = (PROJECT_ROOT / "dataset" / "pretrain_hq.jsonl").as_posix()
 
 VOCAB_SIZE = 6400
 

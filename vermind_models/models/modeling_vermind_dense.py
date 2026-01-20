@@ -2,7 +2,7 @@ from torch import nn
 
 from ..base_module import RMSNorm, FeedForward
 from ..config import VerMindConfig
-
+from ..GQA import Attention
 
 class VerMindBlock(nn.Module):
     def __init__(self, layer_id: int, config: VerMindConfig):
@@ -15,7 +15,8 @@ class VerMindBlock(nn.Module):
         self.layer_id = layer_id
         self.input_layernorm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
         self.post_attention_layernorm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
-        self.mlp = FeedForward(config) if not config.use_moe else MOEFeedForward(config)
+        # self.mlp = FeedForward(config) if not config.use_moe else MOEFeedForward(config)
+        self.mlp = FeedForward(config)
 
     def forward(self, hidden_states, position_embeddings, past_key_value=None, use_cache=False, attention_mask=None):
         residual = hidden_states

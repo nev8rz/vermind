@@ -144,10 +144,46 @@ cython_debug/
 
 # macOS
 .DS_Store
+.AppleDouble
+.LSOverride
 
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 
+# Project specific
 # dataset
-dataset
+dataset/
 
 # tokenizer
-vermind_tokenizer
+vermind_tokenizer/
+
+# Model checkpoints and outputs
+checkpoints/
+out/
+*.pth
+*.pt
+*.ckpt
+*.safetensors
+*.tmp
+*.tmp.*
+
+# SwanLab logs
+swanlog/
+swanlab/
+
+# UV package manager
+uv.lock
+
+# Ruff cache
+.ruff_cache/
+
+# Model weights and training outputs
+weights/
+models/
+*.bin
+
+# Temporary files
+*.bak
+*.orig

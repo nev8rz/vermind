@@ -54,6 +54,9 @@ class VerMindModel(nn.Module):
         freqs_cos, freqs_sin = precompute_freqs_cis(dim=config.hidden_size // config.num_attention_heads,
                                                     end=config.max_position_embeddings, rope_base=config.rope_theta,
                                                     rope_scaling=config.rope_scaling)
+        # 注册为 buffer 但不持久化，避免保存到 checkpoint 中
+        # persistent=False 意味着这些 buffer 不会出现在 state_dict 中，节省存储空间
+        # 同时配合 DDP 的 _ddp_params_and_buffers_to_ignore 使用，避免不同 GPU 上序列长度不同导致的同步问题
         self.register_buffer("freqs_cos", freqs_cos, persistent=False)
         self.register_buffer("freqs_sin", freqs_sin, persistent=False)
 

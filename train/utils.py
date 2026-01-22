@@ -283,10 +283,8 @@ def load_checkpoint(model_path, device='cuda', load_training_state=True):
         else:
             Logger(f'No training state found at {training_state_path}')
     
-    if training_state is not None:
-        return model, tokenizer, training_state
-    else:
-        return model, tokenizer
+    # 始终返回3个值，即使 training_state 为 None
+    return model, tokenizer, training_state
 
 
 def resume_training(model_path, device='cuda'):

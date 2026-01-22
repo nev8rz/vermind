@@ -8,9 +8,11 @@ dependencies = [
     "datasets>=4.5.0",
     "ipykernel>=7.1.0",
     "matplotlib>=3.10.8",
+    "modelscope>=1.34.0",
     "swanlab>=0.7.6",
     "torch==2.8.0",
     "transformers>=4.57.6",
+    "vllm>=0.11.0",
 ]
 
 [[tool.uv.index]]
@@ -22,7 +24,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["data_loader","vermind_models"]
+packages = ["data_loader", "vermind_models", "vllm_adapter"]
+
+[project.entry-points."vllm.general_plugins"]
+vermind = "vllm_adapter.plugin:register_vermind_plugin"
 
 [tool.ruff]
 line-length = 120

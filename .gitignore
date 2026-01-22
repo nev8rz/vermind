@@ -5,6 +5,17 @@ __pycache__/
 
 # my defined files
 output/
+.claude/
+AGENTS.md
+.codex/
+.cursor/
+.agents
+.agent
+.gemini
+.github
+.opencode
+.windsurf
+
 
 # C extensions
 *.so
@@ -158,6 +169,7 @@ Desktop.ini
 # Project specific
 # dataset
 dataset/
+
 
 # tokenizer
 vermind_tokenizer/

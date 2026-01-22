@@ -10,13 +10,12 @@ from torch import optim
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader, DistributedSampler
 from vermind_models.config import VerMindConfig
-from data_loader.pretrain_dataset import PretrainDataset
+from data_loader.sft_dataset import SFTDataset
 from utils import (
     get_lr, init_distributed_mode, setup_seed, Logger, is_main_process, SkipBatchSampler,
     save_checkpoint, load_checkpoint, resume_training, get_base_save_path
 )
 from transformers import AutoTokenizer
-from vermind_models import VerMindConfig
 from vermind_models.models.modeling_vermind import VerMindForCausalLM
 
 warnings.filterwarnings('ignore')
@@ -80,17 +79,17 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="VerMind Pretraining")
+    parser = argparse.ArgumentParser(description="VerMind Full SFT")
     parser.add_argument("--save_dir", type=str, default="../out", help="模型保存目录")
-    parser.add_argument('--save_weight', default='pretrain', type=str, help="保存权重的前缀名")
-    parser.add_argument("--epochs", type=int, default=1, help="训练轮数（建议1轮zero或2-6轮充分训练）")
-    parser.add_argument("--batch_size", type=int, default=32, help="batch size")
-    parser.add_argument("--learning_rate", type=float, default=5e-4, help="初始学习率")
-    parser.add_argument("--warmup_ratio", type=float, default=0.0, help="预热步数比例（0.0-1.0）")
+    parser.add_argument('--save_weight', default='full_sft', type=str, help="保存权重的前缀名")
+    parser.add_argument("--epochs", type=int, default=2, help="训练轮数")
+    parser.add_argument("--batch_size", type=int, default=16, help="batch size")
+    parser.add_argument("--learning_rate", type=float, default=1e-6, help="初始学习率")
+    parser.add_argument("--warmup_ratio", type=float, default=0.03, help="预热步数比例（0.0-1.0）")
     parser.add_argument("--device", type=str, default="cuda:0" if torch.cuda.is_available() else "cpu", help="训练设备")
     parser.add_argument("--dtype", type=str, default="bfloat16", help="混合精度类型")
     parser.add_argument("--num_workers", type=int, default=8, help="数据加载线程数")
-    parser.add_argument("--accumulation_steps", type=int, default=8, help="梯度累积步数")
+    parser.add_argument("--accumulation_steps", type=int, default=1, help="梯度累积步数")
     parser.add_argument("--grad_clip", type=float, default=1.0, help="梯度裁剪阈值")
     parser.add_argument("--log_interval", type=int, default=100, help="日志打印间隔")
     parser.add_argument("--save_interval", type=int, default=1000, help="模型保存间隔")
@@ -100,12 +99,12 @@ if __name__ == "__main__":
     parser.add_argument('--num_key_value_heads', default=2, type=int, help="键值头数（key-value heads）")
     parser.add_argument('--max_seq_len', default=340, type=int, help="训练的最大截断长度（中文1token≈1.5~1.7字符）")
     parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1], help="是否使用MoE架构（0=否，1=是）")
-    parser.add_argument("--data_path", type=str, default="../dataset/pretrain_hq.jsonl", help="预训练数据路径")
+    parser.add_argument("--data_path", type=str, default="../dataset/sft.jsonl", help="SFT训练数据路径")
     parser.add_argument("--tokenizer_path", type=str, default="../vermind_tokenizer", help="tokenizer路径")
-    parser.add_argument('--from_weight', default='none', type=str, help="基于哪个权重训练，为none则从头开始（支持目录路径或旧格式文件名）")
+    parser.add_argument('--from_weight', default='pretrain', type=str, help="基于哪个权重训练，为none则从头开始（支持目录路径或旧格式文件名）")
     parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="是否自动检测&续训（0=否，1=是）")
     parser.add_argument("--use_swanlab", action="store_true", help="是否使用swanlab")
-    parser.add_argument("--swanlab_project", type=str, default="VerMind-Pretrain", help="swanlab项目名")
+    parser.add_argument("--swanlab_project", type=str, default="VerMind-Full-SFT", help="swanlab项目名")
     parser.add_argument("--use_compile", default=0, type=int, choices=[0, 1], help="是否使用torch.compile加速（0=否，1=是）")
     args = parser.parse_args()
 
@@ -149,7 +148,7 @@ if __name__ == "__main__":
     if args.use_swanlab and is_main_process():
         swanlab_id = training_state.get('swanlab_id') if training_state else None
         resume = 'must' if swanlab_id else None
-        swanlab_run_name = f"VerMind-Pretrain-Epoch-{args.epochs}-BatchSize-{args.batch_size}-LearningRate-{args.learning_rate}"
+        swanlab_run_name = f"VerMind-Full-SFT-Epoch-{args.epochs}-BatchSize-{args.batch_size}-LearningRate-{args.learning_rate}"
         swanlab.init(project=args.swanlab_project, name=swanlab_run_name, id=swanlab_id, resume=resume)
         swanlab_run = swanlab.get_run()
     
@@ -203,7 +202,7 @@ if __name__ == "__main__":
         model = torch.compile(model) # 使用torch.compile加速模型
         Logger('torch.compile enabled')
     
-    train_ds = PretrainDataset(args.data_path, tokenizer, max_length=args.max_seq_len) # 初始化数据集
+    train_ds = SFTDataset(args.data_path, tokenizer, max_length=args.max_seq_len) # 初始化数据集
     train_sampler = DistributedSampler(train_ds) if dist.is_initialized() else None # 分布式采样器
     scaler = torch.amp.GradScaler('cuda', enabled=(args.dtype == 'float16')) 
     # 梯度缩放器，只需要在 dtype 为 float16 时启用，因为float16的数值范围更小，容易下溢为0

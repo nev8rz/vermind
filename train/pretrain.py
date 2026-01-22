@@ -11,12 +11,18 @@ from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader, DistributedSampler
 from vermind_models.config import VerMindConfig
 from data_loader.pretrain_dataset import PretrainDataset
-from utils import get_lr, lm_checkpoint, init_distributed_mode, setup_seed, Logger,is_main_process,init_model,SkipBatchSampler
+from utils import (
+    get_lr, init_distributed_mode, setup_seed, Logger, is_main_process, SkipBatchSampler,
+    save_checkpoint, load_checkpoint, resume_training, get_base_save_path
+)
+from transformers import AutoTokenizer
+from vermind_models import VerMindConfig
+from vermind_models.models.modeling_vermind import VerMindForCausalLM
 
 warnings.filterwarnings('ignore')
 
 
-def train_epoch(epoch, loader, iters, start_step=0, swanlab=None):
+def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None, lm_config=None, base_save_path=None):
     start_time = time.time() # 开始时间
     for step, (input_ids, labels) in enumerate(loader, start=start_step + 1):
         input_ids = input_ids.to(args.device) # 将input_ids移动到设备
@@ -44,7 +50,8 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None):
         if step % args.log_interval == 0 or step == iters - 1:
             spend_time = time.time() - start_time
             current_loss = loss.item() * args.accumulation_steps
-            current_aux_loss = res.aux_loss.item() if res.aux_loss is not None else 0.0
+            # current_aux_loss = res.aux_loss.item() if res.aux_loss is not None else 0.0
+            current_aux_loss = 0.0
             current_logits_loss = current_loss - current_aux_loss
             current_lr = optimizer.param_groups[-1]['lr']
             eta_min = spend_time / (step + 1) * iters // 60 - spend_time // 60
@@ -53,15 +60,21 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None):
 
         if (step % args.save_interval == 0 or step == iters - 1) and is_main_process():
             model.eval()
-            moe_suffix = '_moe' if lm_config.use_moe else ''
-            ckp = f'{args.save_dir}/{args.save_weight}_{lm_config.hidden_size}{moe_suffix}.pth'
-            raw_model = model.module if isinstance(model, DistributedDataParallel) else model
-            raw_model = getattr(raw_model, '_orig_mod', raw_model)
-            state_dict = raw_model.state_dict()
-            torch.save({k: v.half().cpu() for k, v in state_dict.items()}, ckp)
-            lm_checkpoint(lm_config, weight=args.save_weight, model=model, optimizer=optimizer, scaler=scaler, epoch=epoch, step=step, swanlab=swanlab, save_dir='../checkpoints')
+            # 使用在训练开始前确定的基础路径
+            save_checkpoint(
+                model=model,
+                tokenizer=tokenizer,
+                config=lm_config,
+                save_path=base_save_path,
+                optimizer=optimizer,
+                scaler=scaler,
+                epoch=epoch,
+                step=step,
+                swanlab=swanlab_run,
+                max_checkpoints=3,  # 默认保留3个checkpoint
+                save_interval=args.save_interval
+            )
             model.train()
-            del state_dict
 
         del input_ids, labels, res, loss
 
@@ -81,12 +94,15 @@ if __name__ == "__main__":
     parser.add_argument("--grad_clip", type=float, default=1.0, help="梯度裁剪阈值")
     parser.add_argument("--log_interval", type=int, default=100, help="日志打印间隔")
     parser.add_argument("--save_interval", type=int, default=1000, help="模型保存间隔")
-    parser.add_argument('--hidden_size', default=512, type=int, help="隐藏层维度")
-    parser.add_argument('--num_hidden_layers', default=8, type=int, help="隐藏层数量")
+    parser.add_argument('--hidden_size', default=768, type=int, help="隐藏层维度")
+    parser.add_argument('--num_hidden_layers', default=16, type=int, help="隐藏层数量")
+    parser.add_argument('--num_attention_heads', default=8, type=int, help="注意力头数（query heads）")
+    parser.add_argument('--num_key_value_heads', default=2, type=int, help="键值头数（key-value heads）")
     parser.add_argument('--max_seq_len', default=340, type=int, help="训练的最大截断长度（中文1token≈1.5~1.7字符）")
     parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1], help="是否使用MoE架构（0=否，1=是）")
     parser.add_argument("--data_path", type=str, default="../dataset/pretrain_hq.jsonl", help="预训练数据路径")
-    parser.add_argument('--from_weight', default='none', type=str, help="基于哪个权重训练，为none则从头开始")
+    parser.add_argument("--tokenizer_path", type=str, default="../vermind_tokenizer", help="tokenizer路径")
+    parser.add_argument('--from_weight', default='none', type=str, help="基于哪个权重训练，为none则从头开始（支持目录路径或旧格式文件名）")
     parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="是否自动检测&续训（0=否，1=是）")
     parser.add_argument("--use_swanlab", action="store_true", help="是否使用swanlab")
     parser.add_argument("--swanlab_project", type=str, default="VerMind-Pretrain", help="swanlab项目名")
@@ -100,8 +116,28 @@ if __name__ == "__main__":
     
     # ========== 2. 配置目录、模型参数、检查ckp ==========
     os.makedirs(args.save_dir, exist_ok=True) # 创建保存目录
-    lm_config = VerMindConfig(hidden_size=args.hidden_size, num_hidden_layers=args.num_hidden_layers, use_moe=bool(args.use_moe)) # 配置模型参数，这里暂时设置只修改 hidden_size 和 num_hidden_layers
-    ckp_data = lm_checkpoint(lm_config, weight=args.save_weight, save_dir='../checkpoints') if args.from_resume==1 else None # 检查ckp
+    lm_config = VerMindConfig(
+        hidden_size=args.hidden_size, 
+        num_hidden_layers=args.num_hidden_layers, 
+        num_attention_heads=args.num_attention_heads,
+        num_key_value_heads=args.num_key_value_heads,
+        use_moe=bool(args.use_moe)
+    ) # 配置模型参数
+    
+    # 检查 resume checkpoint（使用新的 transformers 接口）
+    training_state = None
+    resume_path = None
+    if args.from_resume == 1:
+        # 尝试从标准 transformers 格式目录恢复
+        moe_suffix = '_moe' if lm_config.use_moe else ''
+        resume_path = f'../checkpoints/{args.save_weight}_{lm_config.hidden_size}{moe_suffix}'
+        if os.path.exists(resume_path) and os.path.isdir(resume_path):
+            try:
+                _, _, training_state = resume_training(resume_path, device=args.device)
+                Logger(f'Resumed from transformers checkpoint: {resume_path}')
+            except Exception as e:
+                Logger(f'Failed to resume from {resume_path}: {e}')
+                training_state = None
     
     # ========== 3. 设置混合精度 ==========
     device_type = "cuda" if "cuda" in args.device else "cpu"
@@ -109,18 +145,51 @@ if __name__ == "__main__":
     autocast_ctx = nullcontext() if device_type == "cpu" else torch.amp.autocast('cuda', dtype=dtype) # 混合精度训练上下文
     
     # ========== 4. 配swanlab ==========
-    swanlab = None
+    swanlab_run = None
     if args.use_swanlab and is_main_process():
-        swanlab_id = ckp_data.get('swanlab_id') if ckp_data else None
+        swanlab_id = training_state.get('swanlab_id') if training_state else None
         resume = 'must' if swanlab_id else None
         swanlab_run_name = f"VerMind-Pretrain-Epoch-{args.epochs}-BatchSize-{args.batch_size}-LearningRate-{args.learning_rate}"
         swanlab.init(project=args.swanlab_project, name=swanlab_run_name, id=swanlab_id, resume=resume)
+        swanlab_run = swanlab.get_run()
     
     # ========== 5. 定义模型、数据、优化器 ==========
-    model, tokenizer = init_model(lm_config, args.from_weight, device=args.device) # 初始化模型
+    # 初始化模型和 tokenizer
+    if training_state is not None:
+        # 从 resume checkpoint 加载
+        model, tokenizer, _ = load_checkpoint(resume_path, device=args.device, load_training_state=False)
+        Logger('Model and tokenizer loaded from resume checkpoint')
+    elif args.from_weight != 'none':
+        # 从指定权重加载
+        if os.path.isdir(args.from_weight):
+            # 如果是目录，使用 load_checkpoint 加载
+            model, tokenizer, _ = load_checkpoint(args.from_weight, device=args.device, load_training_state=False)
+            Logger(f'Model and tokenizer loaded from {args.from_weight}')
+        else:
+            # 兼容旧格式：从 .pth 文件加载
+            model = VerMindForCausalLM(lm_config)
+            tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path)
+            moe_suffix = '_moe' if lm_config.use_moe else ''
+            weight_path = f'{args.save_dir}/{args.from_weight}_{lm_config.hidden_size}{moe_suffix}.pth'
+            if os.path.exists(weight_path):
+                weights = torch.load(weight_path, map_location=args.device)
+                if isinstance(weights, dict) and 'model' in weights:
+                    model.load_state_dict(weights['model'], strict=False)
+                else:
+                    model.load_state_dict(weights, strict=False)
+                Logger(f'Model weights loaded from {weight_path}')
+            model = model.to(args.device)
+    else:
+        # 从头开始训练
+        model = VerMindForCausalLM(lm_config)
+        tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path)
+        model = model.to(args.device)
+        Logger('Model initialized from scratch')
+    
     if args.use_compile == 1: 
         model = torch.compile(model) # 使用torch.compile加速模型
         Logger('torch.compile enabled')
+    
     train_ds = PretrainDataset(args.data_path, tokenizer, max_length=args.max_seq_len) # 初始化数据集
     train_sampler = DistributedSampler(train_ds) if dist.is_initialized() else None # 分布式采样器
     scaler = torch.amp.GradScaler('cuda', enabled=(args.dtype == 'float16')) 
@@ -129,18 +198,24 @@ if __name__ == "__main__":
     
     # ========== 6. 从ckp恢复状态 ==========
     start_epoch, start_step = 0, 0
-    if ckp_data:
-        model.load_state_dict(ckp_data['model'])
-        optimizer.load_state_dict(ckp_data['optimizer'])
-        scaler.load_state_dict(ckp_data['scaler'])
-        start_epoch = ckp_data['epoch']
-        start_step = ckp_data.get('step', 0)
+    if training_state:
+        optimizer.load_state_dict(training_state['optimizer'])
+        scaler.load_state_dict(training_state['scaler'])
+        start_epoch = training_state['epoch']
+        start_step = training_state.get('step', 0)
     
     # ========== 7. DDP包模型 ==========
     if dist.is_initialized():
         model._ddp_params_and_buffers_to_ignore = {"freqs_cos", "freqs_sin"}
         # 忽略freqs_cos和freqs_sin，ddp时候，由于每张卡的seq_length不同，会导致freqs_cos和freqs_sin的shape不同，导致ddp失败，所以不要同步freqs_cos和freqs_sin
         model = DistributedDataParallel(model, device_ids=[local_rank])
+    
+    # ========== 7.5. 确定基础保存路径（在训练开始前确定一次） ==========
+    moe_suffix = '_moe' if lm_config.use_moe else ''
+    original_save_path = f'{args.save_dir}/{args.save_weight}_{lm_config.hidden_size}{moe_suffix}'
+    base_save_path = get_base_save_path(original_save_path)
+    if is_main_process():
+        Logger(f'Base save path determined: {os.path.basename(base_save_path)}')
     
     # ========== 8. 开始训练 ==========
     for epoch in range(start_epoch, args.epochs):
@@ -153,9 +228,9 @@ if __name__ == "__main__":
         # 标准 ddp 多卡数据加载方式，pin_memory=True 把数据提前拷贝到 CUDA 固定内存（pinned memory），提升数据加载速度
         if skip > 0: # 如果跳过步数大于0，则打印日志，一般是resume模式
             Logger(f'Epoch [{epoch + 1}/{args.epochs}]: 跳过前{start_step}个step，从step {start_step + 1}开始')
-            train_epoch(epoch, loader, len(loader) + skip, start_step, swanlab)
+            train_epoch(epoch, loader, len(loader) + skip, start_step, swanlab_run, tokenizer, lm_config, base_save_path)
         else:
-            train_epoch(epoch, loader, len(loader), 0, swanlab)
+            train_epoch(epoch, loader, len(loader), 0, swanlab_run, tokenizer, lm_config, base_save_path)
     
     # ========== 9. 清理分布进程 ==========
     if dist.is_initialized(): dist.destroy_process_group()

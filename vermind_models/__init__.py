@@ -4,6 +4,15 @@ from .models.modeling_vermind import VerMindBlock, VerMindModel, VerMindForCausa
 from .FFN import FeedForward
 from .GQA import Attention
 
+# Register model and config with transformers AutoModel
+from transformers import AutoConfig, AutoModelForCausalLM
+
+# Register config
+AutoConfig.register("vermind", VerMindConfig)
+
+# Register model
+AutoModelForCausalLM.register(VerMindConfig, VerMindForCausalLM)
+
 __all__ = [
     # Base modules
     "RMSNorm",

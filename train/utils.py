@@ -6,11 +6,9 @@ import random
 import math
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import Sampler
-from transformers import AutoTokenizer
-from vermind_models.models.modeling_vermind import VerMindForCausalLM
 
 def get_model_params(model, config):
     total = sum(p.numel() for p in model.parameters()) / 1e6
@@ -38,7 +36,9 @@ def get_lr(step, total_steps, lr, warmup_ratio=0.0):
     warmup_steps = int(total_steps * warmup_ratio) # 预热步数
     if warmup_steps > 0 and step < warmup_steps:
         return lr * step / warmup_steps
-    return lr * (0.1 + 0.45 * (1 + math.cos(math.pi * (step - warmup_steps) / (total_steps - warmup_steps))))
+    # 余弦退火：从 lr 衰减到 0.05 * lr
+    # 公式：0.05 + 0.475 * (1 + cos)，确保最大为 1.0，最小为 0.05
+    return lr * (0.05 + 0.475 * (1 + math.cos(math.pi * (step - warmup_steps) / (total_steps - warmup_steps))))
 
 def init_distributed_mode():
     if int(os.environ.get("RANK", -1)) == -1:
@@ -59,78 +59,256 @@ def setup_seed(seed: int): # 设置随机种子，保证训练结果可复现
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
+# ========== 模型保存和加载函数（直接保存方式，使用 torch.save）==========
 
-
-def lm_checkpoint(lm_config, weight='full_sft', model=None, optimizer=None, epoch=0, step=0, swanlab=None, save_dir='../checkpoints', **kwargs):
-    # 两个功能 1. 保存模型权重 2. 恢复模型权重
-    os.makedirs(save_dir, exist_ok=True) # 创建保存目录
-    moe_path = '_moe' if lm_config.use_moe else '' 
-    ckp_path = f'{save_dir}/{weight}_{lm_config.hidden_size}{moe_path}.pth' # 保存路径
-    resume_path = f'{save_dir}/{weight}_{lm_config.hidden_size}{moe_path}_resume.pth' # 恢复路径
-
-    if model is not None: # 保存模型权重
-        raw_model = model.module if isinstance(model, DistributedDataParallel) else model # 获取原始模型，DistributedDataParallel会被包裹一层module
-        raw_model = getattr(raw_model, '_orig_mod', raw_model) # 获取原始模型，torch.compile会被重命名为_orig_mod
-        state_dict = raw_model.state_dict() # 获取模型权重
-        state_dict = {k: v.half().cpu() for k, v in state_dict.items()} # 将模型权重转换为半精度
-        ckp_tmp = ckp_path + '.tmp' # 临时保存路径
-        torch.save(state_dict, ckp_tmp) # 保存模型权重
-        os.replace(ckp_tmp, ckp_path) # 原子替换，防止在写入过程中程序崩溃导致原有的 Checkpoint 文件损坏
-        swanlab_id = None # swanlab id
-        if swanlab: # 如果swanlab存在
-            if hasattr(swanlab, 'get_run'): # 如果swanlab有get_run方法，
-                run = swanlab.get_run() # 获取swanlab run
-                swanlab_id = getattr(run, 'id', None) if run else None # 获取swanlab id
+def get_base_save_path(original_save_path):
+    """
+    确定基础保存路径（在训练开始时调用一次）
+    如果原始路径已存在且有 checkpoint，则创建新的编号路径
+    
+    Args:
+        original_save_path: 原始保存路径，如 pretrain_768
+    
+    Returns:
+        确定的基础保存路径
+    """
+    import glob
+    
+    base_dir = os.path.dirname(original_save_path)
+    base_name = os.path.basename(original_save_path)
+    
+    # 检查原始基础路径是否存在且有 checkpoint
+    base_path = original_save_path
+    if os.path.exists(original_save_path):
+        # 检查是否有 checkpoint 目录
+        pattern = os.path.join(original_save_path, "checkpoint_*")
+        has_checkpoints = len([p for p in glob.glob(pattern) if os.path.isdir(p)]) > 0
+        
+        if has_checkpoints:
+            # 如果原始路径已有 checkpoint，需要创建新的编号基础路径
+            # 查找所有 pretrain_768_* 目录
+            base_pattern = os.path.join(base_dir, f"{base_name}_*")
+            numbered_bases = []
+            for path in glob.glob(base_pattern):
+                if os.path.isdir(path):
+                    path_name = os.path.basename(path)
+                    if path_name.startswith(f"{base_name}_"):
+                        try:
+                            num = int(path_name.replace(f"{base_name}_", ""))
+                            numbered_bases.append(num)
+                        except ValueError:
+                            pass
+            
+            # 确定下一个基础路径编号
+            if numbered_bases:
+                next_base_num = max(numbered_bases) + 1
             else:
-                swanlab_id = getattr(swanlab, 'id', None) # 获取swanlab id
+                next_base_num = 1
+            
+            base_path = os.path.join(base_dir, f"{base_name}_{next_base_num}")
+    
+    # 创建基础目录
+    os.makedirs(base_path, exist_ok=True)
+    
+    return base_path
 
-        resume_data = { # 恢复数据，dict类型
-            'model': state_dict,
-            'optimizer': optimizer.state_dict(), # 优化器状态
-            'epoch': epoch,
-            'step': step, # 当前步数
-            'world_size': dist.get_world_size() if dist.is_initialized() else 1, # world_size
-            'swanlab_id': swanlab_id # swanlab id
-        }
-        for key, value in kwargs.items(): # 遍历kwargs，将kwargs中的状态保存到resume_data中
-            if value is not None:
-                if hasattr(value, 'state_dict'): # 如果value有state_dict方法，则保存value的状态
-                    raw_value = value.module if isinstance(value, DistributedDataParallel) else value
-                    raw_value = getattr(raw_value, '_orig_mod', raw_value) # 获取原始模型
-                    resume_data[key] = raw_value.state_dict() # 保存模型状态
-                else: # 如果value没有state_dict方法，则保存value，一般是静态参数
-                    resume_data[key] = value
 
-        resume_tmp = resume_path + '.tmp' # 临时恢复路径
-        torch.save(resume_data, resume_tmp) # 保存恢复数据
-        os.replace(resume_tmp, resume_path) # 原子替换，防止在写入过程中程序崩溃导致原有的 Checkpoint 文件损坏
-        del state_dict, resume_data # 删除临时数据
-        torch.cuda.empty_cache() # 清空缓存
-    else:  # resume模式
-        if os.path.exists(resume_path): # 如果恢复路径存在
-            ckp_data = torch.load(resume_path, map_location='cpu') # 加载恢复数据
-            saved_ws = ckp_data.get('world_size', 1) # 获取保存的world_size
-            current_ws = dist.get_world_size() if dist.is_initialized() else 1 # 获取当前的world_size
-            if saved_ws != current_ws: # 如果保存的world_size不等于当前的world_size
-                ckp_data['step'] = ckp_data['step'] * saved_ws // current_ws # 计算当前的step
-                Logger(f'GPU数量变化({saved_ws}→{current_ws})，step已自动转换为{ckp_data["step"]}') # 打印日志
-            return ckp_data # 返回恢复数据
-        return None # 返回None
+def save_checkpoint(model, tokenizer, config, save_path, optimizer=None, scaler=None, epoch=0, step=0, swanlab=None, max_checkpoints=3, save_interval=1000, **kwargs):
+    """
+    保存模型、tokenizer 和配置（使用标准 transformers 格式，safetensors）
+    支持多 checkpoint 管理和自动编号
+    
+    Args:
+        model: VerMindForCausalLM 模型
+        tokenizer: tokenizer
+        config: VerMindConfig 配置
+        save_path: 保存路径（目录，基础路径，应该已经在训练开始时确定）
+        optimizer: 优化器（可选）
+        scaler: 梯度缩放器（可选）
+        epoch: 当前 epoch
+        step: 当前 step
+        swanlab: swanlab run 对象（可选）
+        max_checkpoints: 最大保留的 checkpoint 数量（默认3）
+        save_interval: 保存间隔，用于计算 checkpoint 编号
+        **kwargs: 其他需要保存的状态
+    """
+    from torch.nn.parallel import DistributedDataParallel
+    import glob
+    import shutil
+    
+    # save_path 应该已经在训练开始时确定，直接使用
+    base_path = save_path
+    
+    # checkpoint 编号基于 step 和 save_interval
+    checkpoint_num = (step // save_interval) * save_interval
+    
+    # 实际保存路径：base_path/checkpoint_N/
+    actual_save_path = os.path.join(base_path, f"checkpoint_{checkpoint_num}")
+    
+    os.makedirs(actual_save_path, exist_ok=True)
+    
+    # 获取原始模型
+    raw_model = model.module if isinstance(model, DistributedDataParallel) else model
+    raw_model = getattr(raw_model, '_orig_mod', raw_model)
+    
+    # 处理共享权重：临时解除共享，保存后再恢复
+    # lm_head.weight 和 model.embed_tokens.weight 共享同一个权重矩阵
+    # safetensors 格式不支持共享权重，需要临时解除共享
+    embed_weight = raw_model.model.embed_tokens.weight
+    lm_head_weight = raw_model.lm_head.weight
+    is_tied = embed_weight.data_ptr() == lm_head_weight.data_ptr()
+    
+    if is_tied:
+        # 临时解除共享：为 embed_tokens 创建独立的权重
+        raw_model.model.embed_tokens.weight = nn.Parameter(embed_weight.clone())
+    
+    try:
+        # 使用 transformers 标准格式保存（safetensors）
+        raw_model.save_pretrained(actual_save_path, safe_serialization=True)
+        
+        # 保存 tokenizer（如果提供）
+        if tokenizer is not None:
+            tokenizer.save_pretrained(actual_save_path)
+    finally:
+        # 恢复共享权重
+        if is_tied:
+            raw_model.model.embed_tokens.weight = lm_head_weight
+    
+    # 保存训练状态（optimizer, scaler 等）
+    training_state = {
+        'epoch': epoch,
+        'step': step,
+        'world_size': dist.get_world_size() if dist.is_initialized() else 1,
+    }
+    
+    if optimizer is not None:
+        training_state['optimizer'] = optimizer.state_dict()
+    
+    if scaler is not None:
+        training_state['scaler'] = scaler.state_dict()
+    
+    # swanlab id
+    swanlab_id = None
+    if swanlab:
+        if hasattr(swanlab, 'get_run'):
+            run = swanlab.get_run()
+            swanlab_id = getattr(run, 'id', None) if run else None
+        else:
+            swanlab_id = getattr(swanlab, 'id', None)
+    training_state['swanlab_id'] = swanlab_id
+    
+    # 保存其他状态
+    for key, value in kwargs.items():
+        if value is not None:
+            if hasattr(value, 'state_dict'):
+                raw_value = value.module if isinstance(value, DistributedDataParallel) else value
+                raw_value = getattr(raw_value, '_orig_mod', raw_value)
+                training_state[key] = raw_value.state_dict()
+            else:
+                training_state[key] = value
+    
+    # 保存训练状态
+    training_state_path = os.path.join(actual_save_path, 'training_state.pt')
+    training_state_tmp = training_state_path + '.tmp'
+    torch.save(training_state, training_state_tmp)
+    os.replace(training_state_tmp, training_state_path)
+    
+    # 清理旧的 checkpoint（保留最新的 max_checkpoints 个）
+    all_checkpoints = []
+    pattern = os.path.join(base_path, "checkpoint_*")
+    for path in glob.glob(pattern):
+        if os.path.isdir(path):
+            all_checkpoints.append(path)
+    
+    # 按修改时间排序，最新的在前
+    all_checkpoints.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+    
+    # 删除超出数量的旧 checkpoint
+    removed_count = 0
+    if len(all_checkpoints) > max_checkpoints:
+        for old_cp in all_checkpoints[max_checkpoints:]:
+            Logger(f'Removing old checkpoint: {os.path.basename(old_cp)}')
+            shutil.rmtree(old_cp)
+            removed_count += 1
+    
+    Logger(f'Model saved to {os.path.basename(base_path)}/{os.path.basename(actual_save_path)} (transformers format, safetensors)')
+    Logger(f'Total checkpoints in {os.path.basename(base_path)}: {len(all_checkpoints) - removed_count}/{max_checkpoints}')
 
-# 初始化模型，支持分布式训练
-def init_model(lm_config, from_weight='pretrain', tokenizer_path='../vermind_tokenizer', save_dir='../out', device='cuda'):
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
-    model = VerMindForCausalLM(lm_config) # 初始化模型
 
-    if from_weight!= 'none': # 如果from_weight不为none，则加载模型权重
-        moe_suffix = '_moe' if lm_config.use_moe else ''
-        weight_path = f'{save_dir}/{from_weight}_{lm_config.hidden_size}{moe_suffix}.pth'
-        weights = torch.load(weight_path, map_location=device)
-        model.load_state_dict(weights, strict=False)
+def load_checkpoint(model_path, device='cuda', load_training_state=True):
+    """
+    加载模型和 tokenizer（从 checkpoint 目录，使用 transformers from_pretrained）
+    
+    Args:
+        model_path: 模型路径（目录）
+        device: 设备
+        load_training_state: 是否加载训练状态
+    
+    Returns:
+        model, tokenizer, training_state (如果 load_training_state=True)
+    """
+    from vermind_models.models.modeling_vermind import VerMindForCausalLM
+    from transformers import AutoTokenizer
+    
+    # 使用 transformers 标准格式加载
+    model = VerMindForCausalLM.from_pretrained(model_path)
+    
+    # 恢复共享权重（lm_head.weight 和 model.embed_tokens.weight）
+    # 从 safetensors 加载后，需要重新绑定共享权重
+    if hasattr(model, 'lm_head') and hasattr(model.model, 'embed_tokens'):
+        if model.lm_head.weight.shape == model.model.embed_tokens.weight.shape:
+            model.model.embed_tokens.weight = model.lm_head.weight
+    
+    model = model.to(device)
+    
+    # 加载 tokenizer（从 checkpoint 目录或默认路径）
+    tokenizer = None
+    if os.path.exists(model_path):
+        # 尝试从 checkpoint 目录加载 tokenizer
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(model_path)
+        except Exception:
+            pass
+    
+    if tokenizer is None:
+        # 如果 tokenizer 不存在，使用默认路径
+        tokenizer = AutoTokenizer.from_pretrained('/root/vermind/vermind_tokenizer')
+    
+    training_state = None
+    if load_training_state:
+        training_state_path = os.path.join(model_path, 'training_state.pt')
+        if os.path.exists(training_state_path):
+            training_state = torch.load(training_state_path, map_location='cpu')
+            Logger(f'Training state loaded from {training_state_path}')
+        else:
+            Logger(f'No training state found at {training_state_path}')
+    
+    if training_state is not None:
+        return model, tokenizer, training_state
+    else:
+        return model, tokenizer
 
-    get_model_params(model, lm_config) # 打印模型参数
-    Logger(f'Trainable Params: {sum(p.numel() for p in model.parameters() if p.requires_grad) / 1e6:.3f}M') # 打印可训练参数数量
-    return model.to(device), tokenizer # 返回模型和tokenizer
+
+def resume_training(model_path, device='cuda'):
+    """
+    恢复训练（从 checkpoint 目录加载）
+    
+    Args:
+        model_path: 模型路径（目录）
+        device: 设备
+    
+    Returns:
+        model, tokenizer, training_state
+    """
+    model, tokenizer, training_state = load_checkpoint(model_path, device, load_training_state=True)
+    
+    saved_ws = training_state.get('world_size', 1)
+    current_ws = dist.get_world_size() if dist.is_initialized() else 1
+    if saved_ws != current_ws:
+        training_state['step'] = training_state['step'] * saved_ws // current_ws
+        Logger(f'GPU数量变化({saved_ws}→{current_ws})，step已自动转换为{training_state["step"]}')
+    
+    return model, tokenizer, training_state
 
 
 class SkipBatchSampler(Sampler): # 跳过批次采样器，跳过前skip_batches个批次，resume时使用

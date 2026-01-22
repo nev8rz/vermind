@@ -99,6 +99,8 @@ class VerMindModel(nn.Module):
 
 class VerMindForCausalLM(PreTrainedModel, GenerationMixin):
     config_class = VerMindConfig
+    # 共享权重：lm_head.weight 和 model.embed_tokens.weight 共享同一个权重矩阵
+    # transformers 在保存 safetensors 格式时会自动处理共享权重
 
     def __init__(self, config: VerMindConfig = None):
         self.config = config or VerMindConfig()
@@ -113,7 +115,7 @@ class VerMindForCausalLM(PreTrainedModel, GenerationMixin):
                 labels: Optional[torch.Tensor] = None,
                 past_key_values: Optional[List[Tuple[torch.Tensor, torch.Tensor]]] = None,
                 use_cache: bool = False,
-                logits_to_keep: Union[int, torch.Tensor] = 0, 
+                logits_to_keep: Union[int, torch.Tensor] = 0,
                 **args):
         hidden_states, past_key_values, aux_loss = self.model(
             input_ids=input_ids,

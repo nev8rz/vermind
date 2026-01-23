@@ -113,7 +113,7 @@ def get_base_save_path(original_save_path):
     return base_path
 
 
-def save_checkpoint(model, tokenizer, config, save_path, optimizer=None, scaler=None, epoch=0, step=0, swanlab=None, max_checkpoints=3, save_interval=1000, **kwargs):
+def save_checkpoint(model, tokenizer, config, save_path, optimizer=None, scaler=None, epoch=0, step=0, swanlab=None, max_checkpoints=3, save_interval=1000, steps_per_epoch=None, **kwargs):
     """
     保存模型、tokenizer 和配置（使用标准 transformers 格式，safetensors）
     支持多 checkpoint 管理和自动编号
@@ -126,10 +126,11 @@ def save_checkpoint(model, tokenizer, config, save_path, optimizer=None, scaler=
         optimizer: 优化器（可选）
         scaler: 梯度缩放器（可选）
         epoch: 当前 epoch
-        step: 当前 step
+        step: 当前 step（当前 epoch 内的步数）
         swanlab: swanlab run 对象（可选）
         max_checkpoints: 最大保留的 checkpoint 数量（默认3）
         save_interval: 保存间隔，用于计算 checkpoint 编号
+        steps_per_epoch: 每个 epoch 的总步数（用于计算全局步数）
         **kwargs: 其他需要保存的状态
     """
     from torch.nn.parallel import DistributedDataParallel
@@ -139,8 +140,15 @@ def save_checkpoint(model, tokenizer, config, save_path, optimizer=None, scaler=
     # save_path 应该已经在训练开始时确定，直接使用
     base_path = save_path
     
-    # checkpoint 编号基于 step 和 save_interval
-    checkpoint_num = (step // save_interval) * save_interval
+    # 计算全局步数：global_step = epoch * steps_per_epoch + current_step
+    # 如果 steps_per_epoch 未提供，则回退到仅使用 step（向后兼容）
+    if steps_per_epoch is not None:
+        global_step = epoch * steps_per_epoch + step
+    else:
+        global_step = step
+    
+    # checkpoint 编号基于全局步数和 save_interval
+    checkpoint_num = (global_step // save_interval) * save_interval
     
     # 实际保存路径：base_path/checkpoint_N/
     actual_save_path = os.path.join(base_path, f"checkpoint_{checkpoint_num}")

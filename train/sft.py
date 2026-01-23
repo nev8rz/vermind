@@ -71,7 +71,8 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
                 step=step,
                 swanlab=swanlab_run,
                 max_checkpoints=3,  # 默认保留3个checkpoint
-                save_interval=args.save_interval
+                save_interval=args.save_interval,
+                steps_per_epoch=iters  # 传入每个 epoch 的总步数
             )
             model.train()
 

@@ -43,8 +43,7 @@ vermind/
 │   ├── lora.sh              # LoRA fine-tuning launch script
 │   ├── eval_llm.py          # Model evaluation script
 │   ├── merge_lora.py        # LoRA weight merging script
-│   ├── diagnose_lora.py     # LoRA training diagnosis script
-│   └── debug_lora_training.py  # LoRA training debug script
+│   └── self_cognition.py    # Self-cognition data generation script
 ├── vllm_adapter/            # vLLM inference adapter
 │   ├── start_server.py      # API server startup
 │   └── README.md            # vLLM adapter documentation
@@ -159,17 +158,6 @@ python train/lora.py \
 python scripts/merge_lora.py \
     --model_path /path/to/base_model/checkpoint \
     --lora_path /path/to/lora/checkpoint
-
-# Diagnose LoRA training
-python scripts/diagnose_lora.py \
-    --model_path /path/to/base_model/checkpoint \
-    --lora_path /path/to/lora/checkpoint \
-    --test_inference
-
-# Debug LoRA training
-python scripts/debug_lora_training.py \
-    --model_path /path/to/base_model/checkpoint \
-    --lora_rank 16
 ```
 
 ### 5. Model Evaluation
@@ -250,7 +238,6 @@ LoRA fine-tuning provides:
 - Support for safetensors format
 - Automatic checkpoint management
 - Gradient clipping for LoRA parameters only
-- Debug and diagnosis tools
 
 **Recommended Settings:**
 - **Rank**: 16-32 (higher rank = more capacity, but more parameters)

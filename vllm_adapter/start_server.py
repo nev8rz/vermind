@@ -22,6 +22,29 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 os.environ["PYTHONPATH"] = f"/root/vermind:{os.environ.get('PYTHONPATH', '')}"
 
 
+def is_lora_checkpoint(model_path: str) -> bool:
+    """
+    检查路径是否是 LoRA checkpoint（有 adapter_config.json 但没有 config.json）
+    
+    Args:
+        model_path: 模型路径
+    
+    Returns:
+        bool: 是否是 LoRA checkpoint
+    """
+    if not os.path.isdir(model_path):
+        return False
+    
+    adapter_config_path = os.path.join(model_path, "adapter_config.json")
+    config_json_path = os.path.join(model_path, "config.json")
+    adapter_model_path = os.path.join(model_path, "adapter_model.safetensors")
+    
+    # 如果有 adapter_config.json 和 adapter_model.safetensors，但没有 config.json，则是 LoRA checkpoint
+    return (os.path.exists(adapter_config_path) and 
+            (os.path.exists(adapter_model_path) or os.path.exists(os.path.join(model_path, "adapter_model.bin"))) and
+            not os.path.exists(config_json_path))
+
+
 def ensure_model_config_complete(model_path: str):
     """
     确保模型文件夹的配置完整：
@@ -35,6 +58,15 @@ def ensure_model_config_complete(model_path: str):
     if not os.path.isdir(model_path):
         print(f"⚠️  模型路径不是目录: {model_path}")
         return
+    
+    # 检查是否是 LoRA checkpoint
+    if is_lora_checkpoint(model_path):
+        print(f"⚠️  检测到这是 LoRA checkpoint，不是完整的模型！")
+        print(f"   LoRA checkpoint 不能直接启动，需要先合并到基础模型。")
+        print(f"   使用方法：")
+        print(f"   python scripts/merge_lora.py --model_path <基础模型路径> --lora_path {model_path}")
+        print(f"   然后使用合并后的模型路径启动服务器。")
+        sys.exit(1)
     
     adapter_dir = os.path.dirname(__file__)
     config_json_path = os.path.join(model_path, "config.json")
@@ -221,6 +253,7 @@ sys.argv = [
     "--trust-remote-code",
     "--port", "8000",
     "--host", "0.0.0.0",
+    "--served-model-name", "vermind",
 ]
 
 # Import and run vLLM's main entry point

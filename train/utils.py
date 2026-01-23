@@ -258,8 +258,33 @@ def load_checkpoint(model_path, device='cuda', load_training_state=True):
     from vermind_models.models.modeling_vermind import VerMindForCausalLM
     from transformers import AutoTokenizer
     
-    # 使用 transformers 标准格式加载
-    model = VerMindForCausalLM.from_pretrained(model_path)
+    # 确保路径是绝对路径
+    model_path = os.path.abspath(model_path) if not os.path.isabs(model_path) else model_path
+    
+    # 使用 transformers 标准格式加载（本地路径）
+    # 对于本地绝对路径，需要确保 transformers 能正确识别
+    # 如果路径存在且是目录，使用 local_files_only=True 明确指定这是本地路径
+    if os.path.exists(model_path) and os.path.isdir(model_path):
+        # 本地目录路径，明确指定 local_files_only 和 trust_remote_code
+        # 这样可以避免 transformers 将路径误认为是 Hub repo_id
+        try:
+            model = VerMindForCausalLM.from_pretrained(
+                model_path, 
+                local_files_only=True,
+                trust_remote_code=True
+            )
+        except Exception as e:
+            # 如果 local_files_only 失败，尝试不使用该参数
+            # 某些旧版本的 transformers 可能不支持 local_files_only
+            Logger(f'Warning: Failed to load with local_files_only=True: {e}')
+            Logger(f'Trying without local_files_only...')
+            model = VerMindForCausalLM.from_pretrained(
+                model_path,
+                trust_remote_code=True
+            )
+    else:
+        # 路径不存在，可能要从 Hub 下载（但这里不应该发生）
+        model = VerMindForCausalLM.from_pretrained(model_path, trust_remote_code=True)
     
     # 恢复共享权重（lm_head.weight 和 model.embed_tokens.weight）
     # 从 safetensors 加载后，需要重新绑定共享权重

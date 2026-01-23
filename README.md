@@ -16,6 +16,7 @@ VerMind is a high-performance language model with GQA (Grouped Query Attention) 
 - ✅ **vLLM Adapter** - High-performance inference with OpenAI-compatible API
 - ✅ **Distributed Training** - Support for multi-GPU training with DDP
 - ✅ **Checkpoint Management** - Automatic checkpoint saving and resuming
+- ✅ **LoRA Fine-Tuning** - Parameter-efficient fine-tuning with LoRA adapters
 
 ## Project Structure
 
@@ -25,10 +26,12 @@ vermind/
 │   ├── config/              # Model configuration
 │   ├── GQA.py               # Grouped Query Attention
 │   ├── FFN.py               # Feed Forward Network
-│   └── base_module.py       # Base modules (RMSNorm, RoPE, etc.)
+│   ├── base_module.py       # Base modules (RMSNorm, RoPE, etc.)
+│   └── lora_adpater.py      # LoRA adapter implementation
 ├── train/                   # Training scripts
 │   ├── pretrain.py          # Pre-training script
 │   ├── sft.py               # Supervised Fine-Tuning script
+│   ├── lora.py              # LoRA fine-tuning script
 │   ├── train_tokenizer.py   # Tokenizer training
 │   └── utils.py             # Training utilities
 ├── data_loader/             # Data loading modules
@@ -37,7 +40,11 @@ vermind/
 ├── scripts/                 # Utility scripts
 │   ├── pretrain.sh          # Pre-training launch script
 │   ├── sft.sh               # SFT launch script
-│   └── eval_llm.py          # Model evaluation script
+│   ├── lora.sh              # LoRA fine-tuning launch script
+│   ├── eval_llm.py          # Model evaluation script
+│   ├── merge_lora.py        # LoRA weight merging script
+│   ├── diagnose_lora.py     # LoRA training diagnosis script
+│   └── debug_lora_training.py  # LoRA training debug script
 ├── vllm_adapter/            # vLLM inference adapter
 │   ├── start_server.py      # API server startup
 │   └── README.md            # vLLM adapter documentation
@@ -119,7 +126,53 @@ python train/sft.py \
     --learning_rate 5e-6
 ```
 
-### 4. Model Evaluation
+### 4. LoRA Fine-Tuning
+
+LoRA (Low-Rank Adaptation) is a parameter-efficient fine-tuning method that only trains a small number of additional parameters.
+
+```bash
+# Using launch script
+bash scripts/lora.sh
+
+# Or directly
+python train/lora.py \
+    --data_path /path/to/sft_data.jsonl \
+    --save_dir ./output/lora \
+    --tokenizer_path /path/to/tokenizer \
+    --from_weight /path/to/sft/checkpoint \
+    --epochs 20 \
+    --batch_size 16 \
+    --learning_rate 5e-4 \
+    --lora_rank 16 \
+    --lora_alpha 32 \
+    --lora_target_modules 'q_proj,v_proj,o_proj,gate_proj,up_proj,down_proj'
+```
+
+**LoRA Parameters:**
+- `--lora_rank`: LoRA rank (default: 16, recommended: 16-32)
+- `--lora_alpha`: LoRA alpha scaling factor (default: rank * 2)
+- `--lora_target_modules`: Comma-separated list of modules to apply LoRA (default: all attention and MLP projections)
+
+**LoRA Utilities:**
+```bash
+# Merge LoRA weights into base model
+python scripts/merge_lora.py \
+    --model_path /path/to/base_model/checkpoint \
+    --lora_path /path/to/lora/checkpoint
+
+# Diagnose LoRA training
+python scripts/diagnose_lora.py \
+    --model_path /path/to/base_model/checkpoint \
+    --lora_path /path/to/lora/checkpoint \
+    --test_inference
+
+# Debug LoRA training
+python scripts/debug_lora_training.py \
+    --model_path /path/to/base_model/checkpoint \
+    --lora_rank 16
+```
+
+### 5. Model Evaluation
 
 ```bash
 # Interactive evaluation
@@ -133,7 +186,7 @@ python scripts/eval_llm.py \
 python scripts/eval_llm.py --load_from /path/to/checkpoint
 ```
 
-### 5. Deploy with vLLM (High-Performance Inference)
+### 6. Deploy with vLLM (High-Performance Inference)
 
 ```bash
 # Start API server
@@ -182,6 +235,28 @@ SFT script features:
 - Chat template support
 - Multi-turn conversation training
 - Same training features as pre-training
+
+### LoRA Fine-Tuning
+
+LoRA fine-tuning provides:
+- **Parameter Efficiency** - Only trains 0.1-1% of model parameters
+- **Fast Training** - Faster than full fine-tuning
+- **Memory Efficient** - Lower memory requirements
+- **Modular** - LoRA adapters can be easily merged or swapped
+- **Multiple Adapters** - Support for loading and saving LoRA weights separately
+
+**Key Features:**
+- Automatic LoRA application to target modules
+- Support for safetensors format
+- Automatic checkpoint management
+- Gradient clipping for LoRA parameters only
+- Debug and diagnosis tools
+
+**Recommended Settings:**
+- **Rank**: 16-32 (higher rank = more capacity, but more parameters)
+- **Alpha**: Usually 2x rank (controls scaling factor)
+- **Learning Rate**: 1e-4 to 5e-4 (higher than full fine-tuning)
+- **Target Modules**: `q_proj,v_proj,o_proj,gate_proj,up_proj,down_proj` (all attention and MLP projections)
 
 ### Checkpoint Management
 
@@ -270,6 +345,7 @@ JSONL format with conversation structure:
 - `vllm>=0.11.0` - vLLM for inference
 - `datasets>=4.5.0` - Dataset handling
 - `swanlab>=0.7.6` - Experiment tracking
+- `safetensors>=0.4.0` - Safe tensor serialization (for LoRA weights)
 
 ## License
 

@@ -22,7 +22,7 @@ from vermind_models.lora_adpater import apply_lora, load_lora, save_lora
 warnings.filterwarnings('ignore')
 
 
-def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None, lm_config=None, base_save_path=None):
+def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None, lm_config=None, base_save_path=None, target_modules=None, lora_rank=None, lora_alpha=None, lora_params=None):
     start_time = time.time() # 开始时间
     for step, (input_ids, labels) in enumerate(loader, start=start_step + 1):
         input_ids = input_ids.to(args.device) # 将input_ids移动到设备
@@ -40,12 +40,31 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
 
         if (step + 1) % args.accumulation_steps == 0:
             scaler.unscale_(optimizer)
-            torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
+            # 只裁剪 LoRA 参数的梯度（如果 lora_params 可用）
+            if lora_params:
+                torch.nn.utils.clip_grad_norm_(lora_params, args.grad_clip)
+            else:
+                # 如果没有传入 lora_params，回退到所有参数（但应该不会发生）
+                torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
 
             scaler.step(optimizer)
             scaler.update()
 
             optimizer.zero_grad(set_to_none=True)
+            
+            # 调试：检查 LoRA 参数是否有梯度
+            if lora_params and step % (args.log_interval * 10) == 0:  # 每10个log_interval打印一次
+                lora_grad_norm = 0.0
+                lora_param_norm = 0.0
+                grad_count = 0
+                for p in lora_params:
+                    if p.grad is not None:
+                        lora_grad_norm += p.grad.data.norm(2).item() ** 2
+                        grad_count += 1
+                    lora_param_norm += p.data.norm(2).item() ** 2
+                lora_grad_norm = lora_grad_norm ** 0.5
+                lora_param_norm = lora_param_norm ** 0.5
+                Logger(f'  LoRA grad norm: {lora_grad_norm:.6f}, param norm: {lora_param_norm:.6f}, params with grad: {grad_count}/{len(lora_params)}')
 
         if step % args.log_interval == 0 or step == iters - 1:
             spend_time = time.time() - start_time
@@ -56,11 +75,46 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
             if swanlab: swanlab.log({"loss": current_loss, "learning_rate": current_lr, "epoch_time": eta_min})
 
         if (step % args.save_interval == 0 or step == iters - 1) and is_main_process():
-            # 保存LoRA权重（使用全局步数）
+            # 保存LoRA权重（使用与 save_checkpoint 相同的目录结构）
             global_step = epoch * iters + step
-            lora_save_path = os.path.join(base_save_path, f'lora_{global_step}.pth')
-            save_lora(model, lora_save_path)
-            Logger(f'LoRA weights saved to {lora_save_path}')
+            # checkpoint 编号基于全局步数和 save_interval
+            # 如果是最后一个 step，使用实际的 global_step，避免覆盖之前的 checkpoint
+            if step == iters - 1:
+                checkpoint_num = global_step
+            else:
+                checkpoint_num = (global_step // args.save_interval) * args.save_interval
+            save_lora(
+                model, 
+                base_save_path, 
+                checkpoint_num=checkpoint_num, 
+                use_safetensors=True,
+                lora_rank=lora_rank if lora_rank is not None else args.lora_rank,
+                lora_alpha=lora_alpha if lora_alpha is not None else args.lora_alpha,
+                target_modules=target_modules
+            )
+            Logger(f'LoRA weights saved to {os.path.basename(base_save_path)}/checkpoint_{checkpoint_num}/adapter_model.safetensors')
+            
+            # 清理旧的 checkpoint（保留最新的 max_checkpoints 个）
+            import glob
+            import shutil
+            all_checkpoints = []
+            pattern = os.path.join(base_save_path, "checkpoint_*")
+            for path in glob.glob(pattern):
+                if os.path.isdir(path):
+                    all_checkpoints.append(path)
+            
+            # 按修改时间排序，最新的在前
+            all_checkpoints.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+            
+            # 删除超出数量的旧 checkpoint
+            removed_count = 0
+            if len(all_checkpoints) > args.max_checkpoints:
+                for old_cp in all_checkpoints[args.max_checkpoints:]:
+                    Logger(f'Removing old checkpoint: {os.path.basename(old_cp)}')
+                    shutil.rmtree(old_cp)
+                    removed_count += 1
+            
+            Logger(f'Total checkpoints in {os.path.basename(base_save_path)}: {len(all_checkpoints) - removed_count}/{args.max_checkpoints}')
 
         del input_ids, labels, res, loss
 
@@ -80,6 +134,7 @@ if __name__ == "__main__":
     parser.add_argument("--grad_clip", type=float, default=1.0, help="梯度裁剪阈值")
     parser.add_argument("--log_interval", type=int, default=100, help="日志打印间隔")
     parser.add_argument("--save_interval", type=int, default=500, help="LoRA权重保存间隔")
+    parser.add_argument("--max_checkpoints", type=int, default=3, help="最大保留的 checkpoint 数量")
     parser.add_argument('--hidden_size', default=768, type=int, help="隐藏层维度")
     parser.add_argument('--num_hidden_layers', default=16, type=int, help="隐藏层数量")
     parser.add_argument('--num_attention_heads', default=8, type=int, help="注意力头数（query heads）")
@@ -89,12 +144,17 @@ if __name__ == "__main__":
     parser.add_argument("--tokenizer_path", type=str, default="../vermind_tokenizer", help="tokenizer路径")
     parser.add_argument('--from_weight', default='pretrain', type=str, help="基于哪个权重训练（支持目录路径或旧格式文件名）")
     parser.add_argument('--lora_rank', default=16, type=int, help="LoRA的秩（rank）")
+    parser.add_argument('--lora_alpha', default=None, type=int, help="LoRA的alpha参数（默认：lora_rank * 2）")
     parser.add_argument('--lora_target_modules', default='q_proj,v_proj,o_proj,gate_proj,up_proj,down_proj', type=str, help="要应用LoRA的模块，用逗号分隔，如果为None则自动应用到所有方阵Linear层")
     parser.add_argument('--lora_load_from', default='none', type=str, help="从已有的LoRA权重加载（none表示不加载）")
     parser.add_argument("--use_swanlab", action="store_true", help="是否使用swanlab")
     parser.add_argument("--swanlab_project", type=str, default="VerMind-LoRA", help="swanlab项目名")
     parser.add_argument("--use_compile", default=0, type=int, choices=[0, 1], help="是否使用torch.compile加速（0=否，1=是）")
     args = parser.parse_args()
+    
+    # 设置 lora_alpha 默认值
+    if args.lora_alpha is None:
+        args.lora_alpha = args.lora_rank * 2
 
     # ========== 1. 初始化环境和随机种子 ==========
     local_rank = init_distributed_mode()
@@ -161,8 +221,8 @@ if __name__ == "__main__":
     
     # 应用LoRA
     target_modules = [m.strip() for m in args.lora_target_modules.split(',')] if args.lora_target_modules else None
-    apply_lora(model, rank=args.lora_rank, target_modules=target_modules)
-    Logger(f'LoRA applied with rank={args.lora_rank}, target_modules={target_modules}')
+    apply_lora(model, rank=args.lora_rank, alpha=args.lora_alpha, target_modules=target_modules)
+    Logger(f'LoRA applied with rank={args.lora_rank}, alpha={args.lora_alpha}, target_modules={target_modules}')
     
     # 加载已有的LoRA权重（如果指定）
     if args.lora_load_from != 'none':
@@ -171,6 +231,19 @@ if __name__ == "__main__":
             Logger(f'LoRA weights loaded from {args.lora_load_from}')
         else:
             Logger(f'Warning: LoRA weight file not found: {args.lora_load_from}')
+    
+    # 冻结基础模型参数，只训练 LoRA 参数
+    Logger('Freezing base model parameters...')
+    frozen_count = 0
+    trainable_count = 0
+    for name, param in model.named_parameters():
+        if 'lora' in name.lower():
+            param.requires_grad = True
+            trainable_count += 1
+        else:
+            param.requires_grad = False
+            frozen_count += 1
+    Logger(f'Frozen {frozen_count} base model parameters, {trainable_count} LoRA parameters are trainable')
     
     # 只优化LoRA参数
     lora_params = [p for n, p in model.named_parameters() if 'lora' in n.lower() and p.requires_grad]
@@ -191,6 +264,11 @@ if __name__ == "__main__":
     if dist.is_initialized():
         model._ddp_params_and_buffers_to_ignore = {"freqs_cos", "freqs_sin"}
         model = DistributedDataParallel(model, device_ids=[local_rank])
+        # DDP 包装后，需要重新收集 lora_params，确保参数引用正确
+        # 注意：DDP 包装不会改变参数引用，但为了保险起见，我们重新收集
+        lora_params = [p for n, p in model.named_parameters() if 'lora' in n.lower() and p.requires_grad]
+        # 更新优化器的参数组
+        optimizer = optim.AdamW(lora_params, lr=args.learning_rate)
     
     # ========== 7. 确定基础保存路径 ==========
     original_save_path = f'{args.save_dir}/{args.save_weight}_{lm_config.hidden_size}'
@@ -205,7 +283,7 @@ if __name__ == "__main__":
         indices = torch.randperm(len(train_ds)).tolist()
         batch_sampler = SkipBatchSampler(train_sampler or indices, args.batch_size, 0)
         loader = DataLoader(train_ds, batch_sampler=batch_sampler, num_workers=args.num_workers, pin_memory=True)
-        train_epoch(epoch, loader, len(loader), 0, swanlab_run, tokenizer, lm_config, base_save_path)
+        train_epoch(epoch, loader, len(loader), 0, swanlab_run, tokenizer, lm_config, base_save_path, target_modules, args.lora_rank, args.lora_alpha, lora_params)
     
     # ========== 9. 清理分布进程 ==========
     if dist.is_initialized(): dist.destroy_process_group()

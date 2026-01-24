@@ -1,276 +1,104 @@
 # VerMind
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/python/python-original.svg" alt="Python Logo" width="100" height="100"/>
-  <img src="https://huggingface.co/front/assets/huggingface_logo-noborder.svg" alt="HuggingFace Logo" width="100" height="100"/>
+
+[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-View%20Demo-success?style=for-the-badge&logo=github)](https://nev8rz.github.io/vermind/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+
+<img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/python/python-original.svg" alt="Python Logo" width="80" height="80"/>
+<img src="https://huggingface.co/front/assets/huggingface_logo-noborder.svg" alt="HuggingFace Logo" width="80" height="80"/>
+
 </div>
 
-VerMind is a high-performance language model with GQA (Grouped Query Attention) support, designed for efficient training and inference.
+**VerMind** is a high-performance, lightweight, and modern language model built from the ground up in PyTorch. It features a state-of-the-art architecture, including **Grouped Query Attention (GQA)** and **SwiGLU**, designed for efficient training, fine-tuning, and high-throughput inference.
 
-## Features
+This project serves as a comprehensive, end-to-end toolkit for building, training, and deploying custom language models. It is highly modular, extensively documented, and easy to customize.
 
-- ✅ **GQA (Grouped Query Attention)** - Efficient attention mechanism with grouped query and key-value heads
-- ✅ **SwiGLU Activation** - Swish-Gated Linear Unit activation function
-- ✅ **RoPE with YaRN Scaling** - Rotary Position Embedding with extended context support
-- ✅ **HuggingFace Integration** - Compatible with Transformers library
-- ✅ **vLLM Adapter** - High-performance inference with OpenAI-compatible API
-- ✅ **Distributed Training** - Support for multi-GPU training with DDP
-- ✅ **Checkpoint Management** - Automatic checkpoint saving and resuming
-- ✅ **LoRA Fine-Tuning** - Parameter-efficient fine-tuning with LoRA adapters
+## Why VerMind?
+
+- **Performance & Efficiency**: Implements GQA and Flash Attention to reduce memory footprint and accelerate both training and inference, making it suitable for resource-constrained environments.
+- **Modern Architecture**: Incorporates the latest advancements in LLM architecture, such as SwiGLU activation and Rotary Position Embedding (RoPE) with YaRN scaling for long-context understanding.
+- **End-to-End Solution**: Provides a complete workflow from tokenizer training and pre-training to supervised fine-tuning (SFT), LoRA, and high-performance deployment with a vLLM adapter.
+- **Extensibility & Customization**: The modular design and clear code structure make it easy to experiment with new ideas, swap components, and adapt the model to specific needs.
+- **Educational Value**: Serves as an excellent learning resource for understanding the inner workings of modern language models, with detailed code and documentation.
+
+## Key Features
+
+| Feature | Description |
+|---|---|
+| **Grouped Query Attention (GQA)** | Reduces the memory bandwidth required for inference by sharing key-value heads, leading to significant speedups. |
+| **SwiGLU Activation** | A modern activation function that often leads to better performance compared to traditional ReLU or GeLU. |
+| **Rotary Position Embedding (RoPE)** | A relative position encoding scheme that has become standard in high-performance LLMs. Includes YaRN scaling for extending context length. |
+| **vLLM Adapter** | Enables blazing-fast inference speeds and an OpenAI-compatible API server out-of-the-box. |
+| **LoRA Fine-Tuning** | Supports parameter-efficient fine-tuning (PEFT) with Low-Rank Adaptation, allowing for rapid and memory-efficient customization. |
+| **Distributed Training** | Built-in support for Distributed Data Parallel (DDP) to scale training across multiple GPUs. |
+| **Comprehensive Training Suite** | Includes scripts for pre-training, supervised fine-tuning (SFT), and LoRA, with features like mixed-precision, gradient accumulation, and experiment tracking. |
+
+## Model Architecture
+
+VerMind's architecture is a decoder-only transformer that is optimized for performance and scalability. The core components include:
+
+1.  **RMSNorm**: Used for layer normalization, providing better stability and performance than standard LayerNorm.
+2.  **Rotary Position Embedding (RoPE)**: Applied to queries and keys to inject positional information.
+3.  **Grouped Query Attention (GQA)**: The attention block where multiple query heads attend to a single key-value head, striking a balance between Multi-Head and Multi-Query Attention.
+4.  **SwiGLU Feed-Forward Network**: The FFN block uses the SwiGLU activation, which consists of three linear projections and a Swish activation function.
+
+This design is heavily influenced by successful models like Llama and Mistral.
 
 ## Project Structure
 
 ```
 vermind/
-├── vermind_models/          # Core model implementation
-│   ├── config/              # Model configuration
-│   ├── GQA.py               # Grouped Query Attention
-│   ├── FFN.py               # Feed Forward Network
-│   ├── base_module.py       # Base modules (RMSNorm, RoPE, etc.)
-│   └── lora_adpater.py      # LoRA adapter implementation
-├── train/                   # Training scripts
-│   ├── pretrain.py          # Pre-training script
-│   ├── sft.py               # Supervised Fine-Tuning script
-│   ├── lora.py              # LoRA fine-tuning script
-│   ├── train_tokenizer.py   # Tokenizer training
-│   └── utils.py             # Training utilities
-├── data_loader/             # Data loading modules
-│   ├── pretrain_dataset.py  # Pre-training dataset
-│   └── sft_dataset.py       # SFT dataset
-├── scripts/                 # Utility scripts
-│   ├── pretrain.sh          # Pre-training launch script
-│   ├── sft.sh               # SFT launch script
-│   ├── lora.sh              # LoRA fine-tuning launch script
-│   ├── eval_llm.py          # Model evaluation script
-│   ├── merge_lora.py        # LoRA weight merging script
-│   └── self_cognition.py    # Self-cognition data generation script
-├── vllm_adapter/            # vLLM inference adapter
-│   ├── start_server.py      # API server startup
-│   └── README.md            # vLLM adapter documentation
-└── docs/                    # Documentation notebooks
+├── vermind_models/          # Core model implementation (GQA, FFN, RoPE)
+├── train/                   # Training scripts (pre-train, SFT, LoRA)
+├── data_loader/             # Data loading and processing modules
+├── scripts/                 # Utility scripts (evaluation, merging LoRA)
+├── vllm_adapter/            # Adapter for high-performance vLLM inference
+├── docs/                    # GitHub Pages website and documentation
+└── pyproject.toml           # Project configuration and dependencies
 ```
 
-## Installation
+## Quick Start
 
-### Prerequisites
-
-- Python 3.12+
-- CUDA-capable GPU (for training/inference)
-- uv (package manager)
-
-### Setup
+### 1. Installation
 
 ```bash
 # Clone the repository
 git clone https://github.com/nev8rz/vermind.git
 cd vermind
 
-# Create virtual environment
+# Create and activate virtual environment
 uv venv
-
-# Activate virtual environment
-source .venv/bin/activate  # Linux/macOS
-# or
-.venv\Scripts\activate     # Windows
+source .venv/bin/activate
 
 # Install dependencies
 uv pip install -e .
 ```
 
-## Quick Start
+### 2. Training (Example: LoRA)
 
-### 1. Train Tokenizer
-
-```bash
-python train/train_tokenizer.py \
-    --data_path /path/to/training_data.txt \
-    --tokenizer_dir /path/to/tokenizer_output \
-    --vocab_size 6400
-```
-
-### 2. Pre-training
+LoRA is the most efficient way to adapt VerMind to your data.
 
 ```bash
-# Using launch script
-bash scripts/pretrain.sh
-
-# Or directly
-python train/pretrain.py \
-    --data_path /path/to/pretrain_data.jsonl \
-    --save_dir ./output/pretrain \
-    --tokenizer_path /path/to/tokenizer \
-    --hidden_size 768 \
-    --num_hidden_layers 16 \
-    --num_attention_heads 8 \
-    --num_key_value_heads 2 \
-    --batch_size 32 \
-    --learning_rate 1e-4 \
-    --epochs 1
-```
-
-### 3. Supervised Fine-Tuning (SFT)
-
-```bash
-# Using launch script
-bash scripts/sft.sh
-
-# Or directly
-python train/sft.py \
-    --data_path /path/to/sft_data.jsonl \
-    --save_dir ./output/sft \
-    --tokenizer_path /path/to/tokenizer \
-    --from_weight /path/to/pretrain/checkpoint \
-    --epochs 3 \
-    --batch_size 128 \
-    --learning_rate 5e-6
-```
-
-### 4. LoRA Fine-Tuning
-
-LoRA (Low-Rank Adaptation) is a parameter-efficient fine-tuning method that only trains a small number of additional parameters.
-
-```bash
-# Using launch script
-bash scripts/lora.sh
-
-# Or directly
 python train/lora.py \
-    --data_path /path/to/sft_data.jsonl \
+    --data_path /path/to/your_sft_data.jsonl \
     --save_dir ./output/lora \
-    --tokenizer_path /path/to/tokenizer \
-    --from_weight /path/to/sft/checkpoint \
-    --epochs 20 \
-    --batch_size 16 \
-    --learning_rate 5e-4 \
-    --lora_rank 16 \
-    --lora_alpha 32 \
-    --lora_target_modules 'q_proj,v_proj,o_proj,gate_proj,up_proj,down_proj'
+    --tokenizer_path /path/to/base_model_tokenizer \
+    --from_weight /path/to/base_model_checkpoint \
+    --lora_rank 16
 ```
 
-**LoRA Parameters:**
-- `--lora_rank`: LoRA rank (default: 16, recommended: 16-32)
-- `--lora_alpha`: LoRA alpha scaling factor (default: rank * 2)
-- `--lora_target_modules`: Comma-separated list of modules to apply LoRA (default: all attention and MLP projections)
+### 3. Deployment with vLLM
 
-**LoRA Utilities:**
-```bash
-# Merge LoRA weights into base model
-python scripts/merge_lora.py \
-    --model_path /path/to/base_model/checkpoint \
-    --lora_path /path/to/lora/checkpoint
-```
-
-### 5. Model Evaluation
+Start a high-performance API server compatible with OpenAI's client.
 
 ```bash
-# Interactive evaluation
-python scripts/eval_llm.py \
-    --load_from /path/to/checkpoint \
-    --max_new_tokens 2048 \
-    --temperature 0.85 \
-    --use_chat_template 1
+python vllm_adapter/start_server.py /path/to/your_finetuned_checkpoint
 
-# Auto-test mode (select [0] when prompted)
-python scripts/eval_llm.py --load_from /path/to/checkpoint
+# The server is now running at http://localhost:8000
 ```
 
-### 6. Deploy with vLLM (High-Performance Inference)
-
-```bash
-# Start API server
-cd /root/vermind
-source .venv/bin/activate
-bash vllm_adapter/start_server.sh
-
-# Or with custom model path
-python vllm_adapter/start_server.py /path/to/checkpoint
-```
-
-The server will start on `http://localhost:8000` with OpenAI-compatible API.
-
-See [vLLM Adapter Documentation](vllm_adapter/README.md) for detailed API usage.
-
-## Model Configuration
-
-### Basic Model Sizes
-
-- **Small (26M)**: `hidden_size=512, num_hidden_layers=8`
-- **Base (104M)**: `hidden_size=768, num_hidden_layers=16`
-
-### Key Parameters
-
-- `hidden_size`: Model hidden dimension
-- `num_hidden_layers`: Number of transformer layers
-- `num_attention_heads`: Number of query attention heads
-- `num_key_value_heads`: Number of key-value heads (for GQA)
-- `max_position_embeddings`: Maximum sequence length (default: 32768)
-
-## Training
-
-### Pre-training
-
-Pre-training script supports:
-- Distributed Data Parallel (DDP) training
-- Mixed precision training (bfloat16/float16)
-- Gradient accumulation
-- Learning rate scheduling (warmup + cosine annealing)
-- Automatic checkpoint saving and resuming
-- SwanLab experiment tracking
-
-### Supervised Fine-Tuning
-
-SFT script features:
-- Chat template support
-- Multi-turn conversation training
-- Same training features as pre-training
-
-### LoRA Fine-Tuning
-
-LoRA fine-tuning provides:
-- **Parameter Efficiency** - Only trains 0.1-1% of model parameters
-- **Fast Training** - Faster than full fine-tuning
-- **Memory Efficient** - Lower memory requirements
-- **Modular** - LoRA adapters can be easily merged or swapped
-- **Multiple Adapters** - Support for loading and saving LoRA weights separately
-
-**Key Features:**
-- Automatic LoRA application to target modules
-- Support for safetensors format
-- Automatic checkpoint management
-- Gradient clipping for LoRA parameters only
-
-**Recommended Settings:**
-- **Rank**: 16-32 (higher rank = more capacity, but more parameters)
-- **Alpha**: Usually 2x rank (controls scaling factor)
-- **Learning Rate**: 1e-4 to 5e-4 (higher than full fine-tuning)
-- **Target Modules**: `q_proj,v_proj,o_proj,gate_proj,up_proj,down_proj` (all attention and MLP projections)
-
-### Checkpoint Management
-
-- Checkpoints are saved in HuggingFace format
-- Automatic checkpoint numbering (`checkpoint_1000`, `checkpoint_2000`, etc.)
-- Supports automatic resuming from latest checkpoint
-- Automatic cleanup of old checkpoints (keeps latest 3 by default)
-
-## Inference
-
-### Local Inference
-
-Use `scripts/eval_llm.py` for local inference:
-
-```bash
-python scripts/eval_llm.py \
-    --load_from /path/to/checkpoint \
-    --max_new_tokens 2048 \
-    --temperature 0.85 \
-    --top_p 0.85 \
-    --historys 4 \
-    --use_chat_template 1
-```
-
-### vLLM API Server
-
-Start the server and use OpenAI-compatible API:
+### 4. Making API Requests
 
 ```python
 from openai import OpenAI
@@ -281,75 +109,40 @@ client = OpenAI(
 )
 
 response = client.chat.completions.create(
-    model="/path/to/model",
+    model="/path/to/your_finetuned_checkpoint",
     messages=[
-        {"role": "user", "content": "Hello!"}
+        {"role": "user", "content": "Explain the importance of Grouped Query Attention."}
     ],
-    temperature=0.7,
-    max_tokens=100,
 )
+print(response.choices[0].message.content)
 ```
 
-See [vLLM Adapter README](vllm_adapter/README.md) for more details.
-
-## Data Format
-
-### Pre-training Data
-
-JSONL format, one JSON object per line:
-```json
-{"text": "Your training text here..."}
-```
-
-### SFT Data
-
-JSONL format with conversation structure:
-```json
-{"messages": [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]}
-```
-
-## Configuration Files
-
-### Model Config (`config.json`)
-
-```json
-{
-  "model_type": "vermind",
-  "hidden_size": 768,
-  "num_hidden_layers": 16,
-  "num_attention_heads": 8,
-  "num_key_value_heads": 2,
-  "vocab_size": 6400,
-  "max_position_embeddings": 32768,
-  "rope_theta": 1000000.0
-}
-```
-
-## Dependencies
-
-- `torch==2.8.0` - PyTorch
-- `transformers>=4.57.6` - HuggingFace Transformers
-- `vllm>=0.11.0` - vLLM for inference
-- `datasets>=4.5.0` - Dataset handling
-- `swanlab>=0.7.6` - Experiment tracking
-- `safetensors>=0.4.0` - Safe tensor serialization (for LoRA weights)
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+For more detailed instructions on pre-training, SFT, and evaluation, please refer to the scripts in the `train/` and `scripts/` directories.
 
 ## Contributing
 
-[Add contributing guidelines here]
+Contributions are welcome! If you'd like to contribute, please follow these steps:
+
+1.  Fork the repository.
+2.  Create a new branch (`git checkout -b feature/your-feature-name`).
+3.  Make your changes and commit them (`git commit -m 'Add some feature'`).
+4.  Push to the branch (`git push origin feature/your-feature-name`).
+5.  Open a Pull Request.
+
+Please make sure your code adheres to the project's coding style (Ruff for linting and formatting).
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ## Citation
 
-If you use VerMind in your research, please cite:
+If you use VerMind in your research or work, please consider citing it:
 
 ```bibtex
 @software{vermind2026,
-  title={VerMind: A High-Performance Language Model with GQA},
-  author={[Your Name]},
+  title={VerMind: A High-Performance, Lightweight Language Model with GQA},
+  author={Yijin Zhou},
   year={2026},
   url={https://github.com/nev8rz/vermind}
 }

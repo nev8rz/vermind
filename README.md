@@ -75,64 +75,225 @@ Get your local copy up and running in a few simple steps.
 
 ### Installation
 
-1.  **Clone the repository**
-    ```sh
-    git clone https://github.com/nev8rz/vermind.git
-    cd vermind
-    ```
-2.  **Create and activate virtual environment**
-    ```sh
-    uv venv
-    source .venv/bin/activate
-    ```
-3.  **Install dependencies**
-    ```sh
-    uv pip install -e .
-    ```
+```bash
+# Clone the repository
+git clone https://github.com/nev8rz/vermind.git
+cd vermind
+
+# Create and activate virtual environment
+uv venv
+source .venv/bin/activate
+
+# Install dependencies
+uv pip install -e .
+```
 
 ## 🏃‍♀️ Usage Examples
 
-### 1. LoRA Fine-Tuning
+VerMind provides a complete training pipeline with convenient shell scripts located in `scripts/`. The training workflow follows: **Tokenizer → Pre-training → SFT → LoRA → Deployment**.
 
-LoRA is the most efficient way to adapt VerMind to your data.
+### 1. Train Tokenizer
 
-```python
-# train/lora.py
-python train/lora.py \
-    --data_path /path/to/your_sft_data.jsonl \
-    --save_dir ./output/lora \
-    --tokenizer_path /path/to/base_model_tokenizer \
-    --from_weight /path/to/base_model_checkpoint \
-    --lora_rank 16
-```
-
-### 2. Deployment with vLLM
-
-Start a high-performance API server compatible with OpenAI's client.
+First, train a custom tokenizer on your corpus:
 
 ```bash
-python vllm_adapter/start_server.py /path/to/your_finetuned_checkpoint
+python train/train_tokenizer.py \
+    --data_path /path/to/training_corpus.txt \
+    --tokenizer_dir ./vermind_tokenizer \
+    --vocab_size 6400
+```
+
+### 2. Pre-training
+
+Pre-train the model from scratch on a large corpus. Use the provided script or run directly:
+
+```bash
+# Option 1: Use the launch script (runs in tmux)
+bash scripts/pretrain.sh
+
+# Option 2: Run directly with custom parameters
+python train/pretrain.py \
+    --data_path /path/to/pretrain_data.jsonl \
+    --save_dir ./output/pretrain \
+    --tokenizer_path ./vermind_tokenizer \
+    --epochs 5 \
+    --batch_size 128 \
+    --learning_rate 1e-3 \
+    --warmup_ratio 0.03 \
+    --accumulation_steps 16 \
+    --hidden_size 768 \
+    --num_hidden_layers 16 \
+    --num_attention_heads 8 \
+    --num_key_value_heads 2 \
+    --save_interval 2000 \
+    --use_swanlab
+```
+
+<details>
+<summary><b>📋 Pre-training Parameters</b></summary>
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `--data_path` | - | Path to pre-training data (JSONL format) |
+| `--save_dir` | `./out` | Directory to save checkpoints |
+| `--tokenizer_path` | - | Path to tokenizer |
+| `--epochs` | 1 | Number of training epochs |
+| `--batch_size` | 32 | Batch size per GPU |
+| `--learning_rate` | 5e-4 | Initial learning rate |
+| `--warmup_ratio` | 0.0 | Warmup ratio (0.0-1.0) |
+| `--accumulation_steps` | 8 | Gradient accumulation steps |
+| `--hidden_size` | 768 | Model hidden dimension |
+| `--num_hidden_layers` | 16 | Number of transformer layers |
+| `--num_attention_heads` | 8 | Number of query heads |
+| `--num_key_value_heads` | 2 | Number of KV heads (for GQA) |
+| `--use_swanlab` | False | Enable SwanLab experiment tracking |
+
+</details>
+
+### 3. Supervised Fine-Tuning (SFT)
+
+Fine-tune the pre-trained model on instruction-following data:
+
+```bash
+# Option 1: Use the launch script (runs in tmux)
+bash scripts/sft.sh
+
+# Option 2: Run directly with custom parameters
+python train/sft.py \
+    --data_path /path/to/sft_data.jsonl \
+    --save_dir ./output/sft \
+    --tokenizer_path ./vermind_tokenizer \
+    --from_weight ./output/pretrain/pretrain_768 \
+    --epochs 3 \
+    --batch_size 128 \
+    --learning_rate 5e-6 \
+    --warmup_ratio 0.03 \
+    --accumulation_steps 16 \
+    --save_interval 2000 \
+    --use_swanlab
+```
+
+### 4. LoRA Fine-Tuning
+
+For parameter-efficient fine-tuning, use LoRA to adapt the model with minimal resources:
+
+```bash
+# Option 1: Use the launch script (runs in tmux)
+bash scripts/lora.sh
+
+# Option 2: Run directly with custom parameters
+python train/lora.py \
+    --data_path /path/to/lora_data.jsonl \
+    --save_dir ./output/lora \
+    --tokenizer_path ./vermind_tokenizer \
+    --from_weight ./output/sft/full_sft_768 \
+    --epochs 5 \
+    --batch_size 16 \
+    --learning_rate 1e-4 \
+    --warmup_ratio 0.03 \
+    --lora_rank 16 \
+    --lora_target_modules 'q_proj,v_proj,o_proj,gate_proj,up_proj,down_proj' \
+    --save_interval 100 \
+    --use_swanlab
+```
+
+<details>
+<summary><b>📋 LoRA Parameters</b></summary>
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `--lora_rank` | 16 | LoRA rank (recommended: 16-32) |
+| `--lora_alpha` | rank*2 | LoRA alpha scaling factor |
+| `--lora_target_modules` | all | Comma-separated list of modules to apply LoRA |
+| `--learning_rate` | 1e-4 | Higher than full fine-tuning (1e-4 to 5e-4) |
+
+</details>
+
+### 5. Merge LoRA Weights
+
+After LoRA training, merge the adapter weights into the base model:
+
+```bash
+python scripts/merge_lora.py \
+    --model_path ./output/sft/full_sft_768 \
+    --lora_path ./output/lora/lora_768
+```
+
+### 6. Model Evaluation
+
+Evaluate your model interactively or with auto-test:
+
+```bash
+# Interactive chat mode
+python scripts/eval_llm.py \
+    --load_from ./output/lora/lora_768/checkpoint_merged \
+    --max_new_tokens 2048 \
+    --temperature 0.85 \
+    --use_chat_template 1
+
+# Auto-test mode (select [0] when prompted)
+python scripts/eval_llm.py --load_from ./output/lora/lora_768/checkpoint_merged
+```
+
+### 7. Deploy with vLLM
+
+Start a high-performance API server compatible with OpenAI's client:
+
+```bash
+# Start the server
+python vllm_adapter/start_server.py ./output/lora/lora_768/checkpoint_merged
 
 # The server is now running at http://localhost:8000
 ```
 
-### 3. Making API Requests
+### 8. Making API Requests
 
 ```python
 from openai import OpenAI
 
 client = OpenAI(
     base_url="http://localhost:8000/v1",
-    api_key="dummy",
+    api_key="dummy",  # vLLM doesn't require a real API key
 )
 
+# Chat completion
 response = client.chat.completions.create(
-    model="/path/to/your_finetuned_checkpoint",
+    model="./output/lora/lora_768/checkpoint_merged",
     messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
         {"role": "user", "content": "Explain the importance of Grouped Query Attention."}
     ],
+    temperature=0.7,
+    max_tokens=512,
 )
 print(response.choices[0].message.content)
+```
+
+```bash
+# Or use cURL
+curl http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "./output/lora/lora_768/checkpoint_merged",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "temperature": 0.7
+  }'
+```
+
+## 📊 Data Format
+
+### Pre-training Data
+
+JSONL format, one JSON object per line:
+```json
+{"text": "Your training text here..."}
+```
+
+### SFT / LoRA Data
+
+JSONL format with conversation structure:
+```json
+{"messages": [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]}
 ```
 
 ## 📁 Project Structure
@@ -140,12 +301,31 @@ print(response.choices[0].message.content)
 ```
 vermind/
 ├── vermind_models/          # Core model implementation (GQA, FFN, RoPE)
-├── train/                   # Training scripts (pre-train, SFT, LoRA)
-├── data_loader/             # Data loading and processing modules
-├── scripts/                 # Utility scripts (evaluation, merging LoRA)
-├── vllm_adapter/            # Adapter for high-performance vLLM inference
-├── docs/                    # GitHub Pages website and assets
-└── pyproject.toml           # Project configuration and dependencies
+│   ├── config/              # Model configuration
+│   ├── GQA.py               # Grouped Query Attention
+│   ├── FFN.py               # SwiGLU Feed Forward Network
+│   ├── base_module.py       # RMSNorm, RoPE, etc.
+│   └── lora_adpater.py      # LoRA adapter implementation
+├── train/                   # Training scripts
+│   ├── pretrain.py          # Pre-training script
+│   ├── sft.py               # Supervised Fine-Tuning script
+│   ├── lora.py              # LoRA fine-tuning script
+│   ├── train_tokenizer.py   # Tokenizer training
+│   └── utils.py             # Training utilities
+├── data_loader/             # Data loading modules
+│   ├── pretrain_dataset.py  # Pre-training dataset
+│   └── sft_dataset.py       # SFT dataset
+├── scripts/                 # Launch scripts & utilities
+│   ├── pretrain.sh          # Pre-training launch script
+│   ├── sft.sh               # SFT launch script
+│   ├── lora.sh              # LoRA launch script
+│   ├── eval_llm.py          # Model evaluation
+│   └── merge_lora.py        # LoRA weight merging
+├── vllm_adapter/            # vLLM inference adapter
+│   ├── start_server.py      # API server startup
+│   └── README.md            # vLLM adapter documentation
+├── docs/                    # GitHub Pages website
+└── pyproject.toml           # Project configuration
 ```
 
 ## 🤝 Contributing

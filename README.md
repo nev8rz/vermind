@@ -1,85 +1,103 @@
-# VerMind
+#
+<div align="center">
+  <a href="https://github.com/nev8rz/vermind">
+    <img src="https://raw.githubusercontent.com/nev8rz/vermind/main/docs/assets/vermind_logo.png" alt="VerMind Logo" width="120">
+  </a>
+  <h1 align="center">VerMind</h1>
+  <p align="center">
+    A high-performance, lightweight, and modern language model built from the ground up in PyTorch.
+    <br />
+    <a href="https://nev8rz.github.io/vermind/"><strong>View Demo »</strong></a>
+    ·
+    <a href="https://github.com/nev8rz/vermind/issues">Report Bug</a>
+    ·
+    <a href="https://github.com/nev8rz/vermind/issues">Request Feature</a>
+  </p>
+</div>
 
 <div align="center">
 
-[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-View%20Demo-success?style=for-the-badge&logo=github)](https://nev8rz.github.io/vermind/)
+[![Python 3.12+](https://img.shields.io/badge/Python-3.12+-blue.svg?style=for-the-badge&logo=python)](https://www.python.org/)
+[![PyTorch 2.8.0+](https://img.shields.io/badge/PyTorch-2.8.0+-ee4c2c.svg?style=for-the-badge&logo=pytorch)](https://pytorch.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
-
-<img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/python/python-original.svg" alt="Python Logo" width="80" height="80"/>
-<img src="https://huggingface.co/front/assets/huggingface_logo-noborder.svg" alt="HuggingFace Logo" width="80" height="80"/>
+[![GitHub Stars](https://img.shields.io/github/stars/nev8rz/vermind?style=for-the-badge&logo=github)](https://github.com/nev8rz/vermind/stargazers)
 
 </div>
 
-**VerMind** is a high-performance, lightweight, and modern language model built from the ground up in PyTorch. It features a state-of-the-art architecture, including **Grouped Query Attention (GQA)** and **SwiGLU**, designed for efficient training, fine-tuning, and high-throughput inference.
+---
 
-This project serves as a comprehensive, end-to-end toolkit for building, training, and deploying custom language models. It is highly modular, extensively documented, and easy to customize.
+**VerMind** is a comprehensive, end-to-end toolkit for building, training, and deploying custom language models. It features a state-of-the-art architecture, including **Grouped Query Attention (GQA)** and **SwiGLU**, designed for efficient training, fine-tuning, and high-throughput inference. This project is highly modular, extensively documented, and easy to customize, making it an ideal starting point for both research and production.
 
-## Why VerMind?
+## ✨ Why VerMind?
 
-- **Performance & Efficiency**: Implements GQA and Flash Attention to reduce memory footprint and accelerate both training and inference, making it suitable for resource-constrained environments.
-- **Modern Architecture**: Incorporates the latest advancements in LLM architecture, such as SwiGLU activation and Rotary Position Embedding (RoPE) with YaRN scaling for long-context understanding.
-- **End-to-End Solution**: Provides a complete workflow from tokenizer training and pre-training to supervised fine-tuning (SFT), LoRA, and high-performance deployment with a vLLM adapter.
-- **Extensibility & Customization**: The modular design and clear code structure make it easy to experiment with new ideas, swap components, and adapt the model to specific needs.
-- **Educational Value**: Serves as an excellent learning resource for understanding the inner workings of modern language models, with detailed code and documentation.
+-   🚀 **Performance & Efficiency**: Implements GQA and Flash Attention to reduce memory footprint and accelerate both training and inference.
+-   🧠 **Modern Architecture**: Incorporates the latest advancements in LLM architecture, such as SwiGLU activation and Rotary Position Embedding (RoPE) with YaRN scaling.
+-   🔧 **End-to-End Solution**: Provides a complete workflow from tokenizer training and pre-training to supervised fine-tuning (SFT), LoRA, and deployment with a vLLM adapter.
+-   🧩 **Extensibility & Customization**: The modular design makes it easy to experiment with new ideas, swap components, and adapt the model to specific needs.
+-   🎓 **Educational Value**: Serves as an excellent learning resource for understanding the inner workings of modern language models, with detailed code and documentation.
 
-## Key Features
+## 🛠️ Key Features
 
-| Feature | Description |
-|---|---|
-| **Grouped Query Attention (GQA)** | Reduces the memory bandwidth required for inference by sharing key-value heads, leading to significant speedups. |
-| **SwiGLU Activation** | A modern activation function that often leads to better performance compared to traditional ReLU or GeLU. |
-| **Rotary Position Embedding (RoPE)** | A relative position encoding scheme that has become standard in high-performance LLMs. Includes YaRN scaling for extending context length. |
-| **vLLM Adapter** | Enables blazing-fast inference speeds and an OpenAI-compatible API server out-of-the-box. |
-| **LoRA Fine-Tuning** | Supports parameter-efficient fine-tuning (PEFT) with Low-Rank Adaptation, allowing for rapid and memory-efficient customization. |
-| **Distributed Training** | Built-in support for Distributed Data Parallel (DDP) to scale training across multiple GPUs. |
-| **Comprehensive Training Suite** | Includes scripts for pre-training, supervised fine-tuning (SFT), and LoRA, with features like mixed-precision, gradient accumulation, and experiment tracking. |
+| Feature                               | Description                                                                                                                            |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| ⚡ **Grouped Query Attention (GQA)**  | Reduces the memory bandwidth required for inference by sharing key-value heads, leading to significant speedups.                       |
+| 🔥 **SwiGLU Activation**              | A modern activation function that often leads to better performance compared to traditional ReLU or GeLU.                                |
+| 📐 **Rotary Position Embedding (RoPE)** | A relative position encoding scheme that has become standard in high-performance LLMs. Includes YaRN scaling for extending context length. |
+| 🚀 **vLLM Adapter**                   | Enables blazing-fast inference speeds and an OpenAI-compatible API server out-of-the-box.                                                |
+| 🎨 **LoRA Fine-Tuning**               | Supports parameter-efficient fine-tuning (PEFT) with Low-Rank Adaptation for rapid and memory-efficient customization.                 |
+| 🌐 **Distributed Training**           | Built-in support for Distributed Data Parallel (DDP) to scale training across multiple GPUs.                                             |
 
-## Model Architecture
+## 🏗️ Architecture Overview
 
-VerMind's architecture is a decoder-only transformer that is optimized for performance and scalability. The core components include:
-
-1.  **RMSNorm**: Used for layer normalization, providing better stability and performance than standard LayerNorm.
-2.  **Rotary Position Embedding (RoPE)**: Applied to queries and keys to inject positional information.
-3.  **Grouped Query Attention (GQA)**: The attention block where multiple query heads attend to a single key-value head, striking a balance between Multi-Head and Multi-Query Attention.
-4.  **SwiGLU Feed-Forward Network**: The FFN block uses the SwiGLU activation, which consists of three linear projections and a Swish activation function.
-
-This design is heavily influenced by successful models like Llama and Mistral.
-
-## Project Structure
+VerMind's architecture is a decoder-only transformer optimized for performance and scalability. The core components are designed to be both efficient and easy to understand.
 
 ```
-vermind/
-├── vermind_models/          # Core model implementation (GQA, FFN, RoPE)
-├── train/                   # Training scripts (pre-train, SFT, LoRA)
-├── data_loader/             # Data loading and processing modules
-├── scripts/                 # Utility scripts (evaluation, merging LoRA)
-├── vllm_adapter/            # Adapter for high-performance vLLM inference
-├── docs/                    # GitHub Pages website and documentation
-└── pyproject.toml           # Project configuration and dependencies
+Input ┬─> RMSNorm ┬─> Grouped Query Attention ┬─> Add & Norm ┬─> SwiGLU FFN ┬─> Output
+      |           | (GQA)                     |              |            |
+      └───────────|───────────────────────────┘              └────────────┘
+                  └─> Rotary Positional Embedding (RoPE)
 ```
 
-## Quick Start
+-   **RMSNorm**: Used for layer normalization, providing better stability.
+-   **Rotary Position Embedding (RoPE)**: Applied to queries and keys to inject positional information.
+-   **Grouped Query Attention (GQA)**: The attention block where multiple query heads attend to a single key-value head.
+-   **SwiGLU Feed-Forward Network**: The FFN block uses the SwiGLU activation for better performance.
 
-### 1. Installation
+## 🚀 Getting Started
 
-```bash
-# Clone the repository
-git clone https://github.com/nev8rz/vermind.git
-cd vermind
+Get your local copy up and running in a few simple steps.
 
-# Create and activate virtual environment
-uv venv
-source .venv/bin/activate
+### Prerequisites
 
-# Install dependencies
-uv pip install -e .
-```
+-   Python 3.12+
+-   PyTorch 2.8.0+
+-   `uv` package manager (recommended)
 
-### 2. Training (Example: LoRA)
+### Installation
+
+1.  **Clone the repository**
+    ```sh
+    git clone https://github.com/nev8rz/vermind.git
+    cd vermind
+    ```
+2.  **Create and activate virtual environment**
+    ```sh
+    uv venv
+    source .venv/bin/activate
+    ```
+3.  **Install dependencies**
+    ```sh
+    uv pip install -e .
+    ```
+
+## 🏃‍♀️ Usage Examples
+
+### 1. LoRA Fine-Tuning
 
 LoRA is the most efficient way to adapt VerMind to your data.
 
-```bash
+```python
+# train/lora.py
 python train/lora.py \
     --data_path /path/to/your_sft_data.jsonl \
     --save_dir ./output/lora \
@@ -88,7 +106,7 @@ python train/lora.py \
     --lora_rank 16
 ```
 
-### 3. Deployment with vLLM
+### 2. Deployment with vLLM
 
 Start a high-performance API server compatible with OpenAI's client.
 
@@ -98,7 +116,7 @@ python vllm_adapter/start_server.py /path/to/your_finetuned_checkpoint
 # The server is now running at http://localhost:8000
 ```
 
-### 4. Making API Requests
+### 3. Making API Requests
 
 ```python
 from openai import OpenAI
@@ -117,25 +135,34 @@ response = client.chat.completions.create(
 print(response.choices[0].message.content)
 ```
 
-For more detailed instructions on pre-training, SFT, and evaluation, please refer to the scripts in the `train/` and `scripts/` directories.
+## 📁 Project Structure
 
-## Contributing
+```
+vermind/
+├── vermind_models/          # Core model implementation (GQA, FFN, RoPE)
+├── train/                   # Training scripts (pre-train, SFT, LoRA)
+├── data_loader/             # Data loading and processing modules
+├── scripts/                 # Utility scripts (evaluation, merging LoRA)
+├── vllm_adapter/            # Adapter for high-performance vLLM inference
+├── docs/                    # GitHub Pages website and assets
+└── pyproject.toml           # Project configuration and dependencies
+```
 
-Contributions are welcome! If you'd like to contribute, please follow these steps:
+## 🤝 Contributing
 
-1.  Fork the repository.
-2.  Create a new branch (`git checkout -b feature/your-feature-name`).
-3.  Make your changes and commit them (`git commit -m 'Add some feature'`).
-4.  Push to the branch (`git push origin feature/your-feature-name`).
-5.  Open a Pull Request.
+Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
-Please make sure your code adheres to the project's coding style (Ruff for linting and formatting).
+1.  Fork the Project
+2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4.  Push to the Branch (`git push origin feature/AmazingFeature`)
+5.  Open a Pull Request
 
-## License
+## 📜 License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+Distributed under the MIT License. See `LICENSE` for more information.
 
-## Citation
+## ✒️ Citation
 
 If you use VerMind in your research or work, please consider citing it:
 
@@ -147,3 +174,7 @@ If you use VerMind in your research or work, please consider citing it:
   url={https://github.com/nev8rz/vermind}
 }
 ```
+
+---
+
+<p align="center">Made with ❤️ by Yijin Zhou</p>

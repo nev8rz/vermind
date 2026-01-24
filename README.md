@@ -17,6 +17,12 @@
 
 <div align="center">
 
+**English** · [简体中文](README_zh.md)
+
+</div>
+
+<div align="center">
+
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12+-blue.svg?style=for-the-badge&logo=python)](https://www.python.org/)
 [![PyTorch 2.8.0+](https://img.shields.io/badge/PyTorch-2.8.0+-ee4c2c.svg?style=for-the-badge&logo=pytorch)](https://pytorch.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
@@ -51,12 +57,9 @@
 
 VerMind's architecture is a decoder-only transformer optimized for performance and scalability. The core components are designed to be both efficient and easy to understand.
 
-```
-Input ┬─> RMSNorm ┬─> Grouped Query Attention ┬─> Add & Norm ┬─> SwiGLU FFN ┬─> Output
-      |           | (GQA)                     |              |            |
-      └───────────|───────────────────────────┘              └────────────┘
-                  └─> Rotary Positional Embedding (RoPE)
-```
+<div align="center">
+  <img src="https://raw.githubusercontent.com/nev8rz/vermind/main/docs/assets/architecture.png" alt="VerMind Architecture" width="800">
+</div>
 
 -   **RMSNorm**: Used for layer normalization, providing better stability.
 -   **Rotary Position Embedding (RoPE)**: Applied to queries and keys to inject positional information.
@@ -118,37 +121,8 @@ python train/pretrain.py \
     --tokenizer_path ./vermind_tokenizer \
     --epochs 5 \
     --batch_size 128 \
-    --learning_rate 1e-3 \
-    --warmup_ratio 0.03 \
-    --accumulation_steps 16 \
-    --hidden_size 768 \
-    --num_hidden_layers 16 \
-    --num_attention_heads 8 \
-    --num_key_value_heads 2 \
-    --save_interval 2000 \
-    --use_swanlab
+    --learning_rate 1e-3
 ```
-
-<details>
-<summary><b>📋 Pre-training Parameters</b></summary>
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `--data_path` | - | Path to pre-training data (JSONL format) |
-| `--save_dir` | `./out` | Directory to save checkpoints |
-| `--tokenizer_path` | - | Path to tokenizer |
-| `--epochs` | 1 | Number of training epochs |
-| `--batch_size` | 32 | Batch size per GPU |
-| `--learning_rate` | 5e-4 | Initial learning rate |
-| `--warmup_ratio` | 0.0 | Warmup ratio (0.0-1.0) |
-| `--accumulation_steps` | 8 | Gradient accumulation steps |
-| `--hidden_size` | 768 | Model hidden dimension |
-| `--num_hidden_layers` | 16 | Number of transformer layers |
-| `--num_attention_heads` | 8 | Number of query heads |
-| `--num_key_value_heads` | 2 | Number of KV heads (for GQA) |
-| `--use_swanlab` | False | Enable SwanLab experiment tracking |
-
-</details>
 
 ### 3. Supervised Fine-Tuning (SFT)
 
@@ -165,12 +139,7 @@ python train/sft.py \
     --tokenizer_path ./vermind_tokenizer \
     --from_weight ./output/pretrain/pretrain_768 \
     --epochs 3 \
-    --batch_size 128 \
-    --learning_rate 5e-6 \
-    --warmup_ratio 0.03 \
-    --accumulation_steps 16 \
-    --save_interval 2000 \
-    --use_swanlab
+    --learning_rate 5e-6
 ```
 
 ### 4. LoRA Fine-Tuning
@@ -188,26 +157,9 @@ python train/lora.py \
     --tokenizer_path ./vermind_tokenizer \
     --from_weight ./output/sft/full_sft_768 \
     --epochs 5 \
-    --batch_size 16 \
     --learning_rate 1e-4 \
-    --warmup_ratio 0.03 \
-    --lora_rank 16 \
-    --lora_target_modules 'q_proj,v_proj,o_proj,gate_proj,up_proj,down_proj' \
-    --save_interval 100 \
-    --use_swanlab
+    --lora_rank 16
 ```
-
-<details>
-<summary><b>📋 LoRA Parameters</b></summary>
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `--lora_rank` | 16 | LoRA rank (recommended: 16-32) |
-| `--lora_alpha` | rank*2 | LoRA alpha scaling factor |
-| `--lora_target_modules` | all | Comma-separated list of modules to apply LoRA |
-| `--learning_rate` | 1e-4 | Higher than full fine-tuning (1e-4 to 5e-4) |
-
-</details>
 
 ### 5. Merge LoRA Weights
 
@@ -221,18 +173,12 @@ python scripts/merge_lora.py \
 
 ### 6. Model Evaluation
 
-Evaluate your model interactively or with auto-test:
+Evaluate your model interactively:
 
 ```bash
-# Interactive chat mode
 python scripts/eval_llm.py \
     --load_from ./output/lora/lora_768/checkpoint_merged \
-    --max_new_tokens 2048 \
-    --temperature 0.85 \
     --use_chat_template 1
-
-# Auto-test mode (select [0] when prompted)
-python scripts/eval_llm.py --load_from ./output/lora/lora_768/checkpoint_merged
 ```
 
 ### 7. Deploy with vLLM
@@ -253,79 +199,16 @@ from openai import OpenAI
 
 client = OpenAI(
     base_url="http://localhost:8000/v1",
-    api_key="dummy",  # vLLM doesn't require a real API key
+    api_key="dummy",
 )
 
-# Chat completion
 response = client.chat.completions.create(
     model="./output/lora/lora_768/checkpoint_merged",
     messages=[
-        {"role": "system", "content": "You are a helpful assistant."},
         {"role": "user", "content": "Explain the importance of Grouped Query Attention."}
     ],
-    temperature=0.7,
-    max_tokens=512,
 )
 print(response.choices[0].message.content)
-```
-
-```bash
-# Or use cURL
-curl http://localhost:8000/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "./output/lora/lora_768/checkpoint_merged",
-    "messages": [{"role": "user", "content": "Hello!"}],
-    "temperature": 0.7
-  }'
-```
-
-## 📊 Data Format
-
-### Pre-training Data
-
-JSONL format, one JSON object per line:
-```json
-{"text": "Your training text here..."}
-```
-
-### SFT / LoRA Data
-
-JSONL format with conversation structure:
-```json
-{"messages": [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]}
-```
-
-## 📁 Project Structure
-
-```
-vermind/
-├── vermind_models/          # Core model implementation (GQA, FFN, RoPE)
-│   ├── config/              # Model configuration
-│   ├── GQA.py               # Grouped Query Attention
-│   ├── FFN.py               # SwiGLU Feed Forward Network
-│   ├── base_module.py       # RMSNorm, RoPE, etc.
-│   └── lora_adpater.py      # LoRA adapter implementation
-├── train/                   # Training scripts
-│   ├── pretrain.py          # Pre-training script
-│   ├── sft.py               # Supervised Fine-Tuning script
-│   ├── lora.py              # LoRA fine-tuning script
-│   ├── train_tokenizer.py   # Tokenizer training
-│   └── utils.py             # Training utilities
-├── data_loader/             # Data loading modules
-│   ├── pretrain_dataset.py  # Pre-training dataset
-│   └── sft_dataset.py       # SFT dataset
-├── scripts/                 # Launch scripts & utilities
-│   ├── pretrain.sh          # Pre-training launch script
-│   ├── sft.sh               # SFT launch script
-│   ├── lora.sh              # LoRA launch script
-│   ├── eval_llm.py          # Model evaluation
-│   └── merge_lora.py        # LoRA weight merging
-├── vllm_adapter/            # vLLM inference adapter
-│   ├── start_server.py      # API server startup
-│   └── README.md            # vLLM adapter documentation
-├── docs/                    # GitHub Pages website
-└── pyproject.toml           # Project configuration
 ```
 
 ## 🤝 Contributing

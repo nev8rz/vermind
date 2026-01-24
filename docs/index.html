@@ -73,6 +73,7 @@
             display: flex;
             gap: 32px;
             list-style: none;
+            align-items: center;
         }
         
         .nav-links a {
@@ -83,6 +84,36 @@
         }
         
         .nav-links a:hover {
+            color: var(--text-primary);
+        }
+        
+        .lang-switch {
+            display: flex;
+            gap: 8px;
+            padding: 4px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        
+        .lang-btn {
+            padding: 6px 12px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        
+        .lang-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .lang-btn:hover:not(.active) {
             color: var(--text-primary);
         }
         
@@ -247,59 +278,53 @@
         }
         
         .arch-content {
+            text-align: center;
+        }
+        
+        .arch-content h2 {
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+        }
+        
+        .arch-content > p {
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+            font-size: 1.1rem;
+        }
+        
+        .arch-image {
+            max-width: 100%;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            margin-bottom: 40px;
+        }
+        
+        .arch-details {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 60px;
-            align-items: center;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+            text-align: left;
+            max-width: 1000px;
+            margin: 0 auto;
         }
         
-        .arch-text h2 {
-            font-size: 2rem;
-            margin-bottom: 24px;
-        }
-        
-        .arch-text p {
-            color: var(--text-secondary);
-            margin-bottom: 24px;
-        }
-        
-        .arch-list {
-            list-style: none;
-        }
-        
-        .arch-list li {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 12px;
-            color: var(--text-secondary);
-        }
-        
-        .arch-list li::before {
-            content: '✓';
-            color: var(--secondary);
-            font-weight: bold;
-        }
-        
-        .code-block {
-            background: #0d1117;
+        .arch-detail-item {
+            background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 12px;
-            padding: 24px;
-            overflow-x: auto;
+            padding: 20px;
         }
         
-        .code-block pre {
-            font-family: 'JetBrains Mono', monospace;
+        .arch-detail-item h4 {
+            color: var(--primary);
+            margin-bottom: 8px;
+            font-size: 1rem;
+        }
+        
+        .arch-detail-item p {
+            color: var(--text-secondary);
             font-size: 0.9rem;
-            color: #e6edf3;
-            margin: 0;
         }
-        
-        .code-block .comment { color: #8b949e; }
-        .code-block .keyword { color: #ff7b72; }
-        .code-block .string { color: #a5d6ff; }
-        .code-block .number { color: #79c0ff; }
         
         /* Quick Start Section */
         .quickstart {
@@ -422,18 +447,25 @@
             color: var(--primary);
         }
         
+        /* Language content */
+        [data-lang="zh"] { display: none; }
+        body.zh [data-lang="en"] { display: none; }
+        body.zh [data-lang="zh"] { display: block; }
+        body.zh span[data-lang="zh"],
+        body.zh a[data-lang="zh"] { display: inline; }
+        
         /* Responsive */
         @media (max-width: 768px) {
             .hero h1 {
                 font-size: 2.5rem;
             }
             
-            .arch-content {
-                grid-template-columns: 1fr;
-            }
-            
             .nav-links {
                 display: none;
+            }
+            
+            .arch-details {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -443,10 +475,16 @@
         <div class="container">
             <div class="logo">VerMind</div>
             <ul class="nav-links">
-                <li><a href="#features">Features</a></li>
-                <li><a href="#architecture">Architecture</a></li>
-                <li><a href="#quickstart">Quick Start</a></li>
-                <li><a href="#models">Models</a></li>
+                <li><a href="#features" data-lang="en">Features</a><a href="#features" data-lang="zh">功能</a></li>
+                <li><a href="#architecture" data-lang="en">Architecture</a><a href="#architecture" data-lang="zh">架构</a></li>
+                <li><a href="#quickstart" data-lang="en">Quick Start</a><a href="#quickstart" data-lang="zh">快速开始</a></li>
+                <li><a href="#models" data-lang="en">Models</a><a href="#models" data-lang="zh">模型</a></li>
+                <li>
+                    <div class="lang-switch">
+                        <button class="lang-btn active" data-lang-switch="en">EN</button>
+                        <button class="lang-btn" data-lang-switch="zh">中文</button>
+                    </div>
+                </li>
             </ul>
             <a href="https://github.com/nev8rz/vermind" class="github-btn" target="_blank">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -460,53 +498,72 @@
     <section class="hero">
         <div class="container">
             <h1>VerMind</h1>
-            <p class="subtitle">A high-performance language model with GQA (Grouped Query Attention) support, designed for efficient training and inference.</p>
+            <p class="subtitle" data-lang="en">A high-performance language model with GQA (Grouped Query Attention) support, designed for efficient training and inference.</p>
+            <p class="subtitle" data-lang="zh">一个支持 GQA（分组查询注意力）的高性能语言模型，专为高效训练和推理而设计。</p>
             <div class="hero-buttons">
                 <a href="https://github.com/nev8rz/vermind" class="btn btn-primary" target="_blank">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
                     </svg>
-                    View on GitHub
+                    <span data-lang="en">View on GitHub</span>
+                    <span data-lang="zh">在 GitHub 上查看</span>
                 </a>
-                <a href="#quickstart" class="btn btn-secondary">Get Started</a>
+                <a href="#quickstart" class="btn btn-secondary">
+                    <span data-lang="en">Get Started</span>
+                    <span data-lang="zh">快速开始</span>
+                </a>
             </div>
         </div>
     </section>
 
     <section class="features" id="features">
         <div class="container">
-            <h2 class="section-title">Features</h2>
-            <p class="section-subtitle">Built with modern techniques for optimal performance</p>
+            <h2 class="section-title" data-lang="en">Features</h2>
+            <h2 class="section-title" data-lang="zh">核心功能</h2>
+            <p class="section-subtitle" data-lang="en">Built with modern techniques for optimal performance</p>
+            <p class="section-subtitle" data-lang="zh">采用现代技术构建，实现最佳性能</p>
             <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-icon">⚡</div>
-                    <h3>GQA (Grouped Query Attention)</h3>
-                    <p>Efficient attention mechanism with grouped query and key-value heads for faster inference and reduced memory usage.</p>
+                    <h3 data-lang="en">GQA (Grouped Query Attention)</h3>
+                    <h3 data-lang="zh">分组查询注意力 (GQA)</h3>
+                    <p data-lang="en">Efficient attention mechanism with grouped query and key-value heads for faster inference and reduced memory usage.</p>
+                    <p data-lang="zh">高效的注意力机制，通过分组查询和键值头实现更快的推理和更低的内存占用。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🔥</div>
-                    <h3>SwiGLU Activation</h3>
-                    <p>Swish-Gated Linear Unit activation function for improved model performance and training stability.</p>
+                    <h3 data-lang="en">SwiGLU Activation</h3>
+                    <h3 data-lang="zh">SwiGLU 激活函数</h3>
+                    <p data-lang="en">Swish-Gated Linear Unit activation function for improved model performance and training stability.</p>
+                    <p data-lang="zh">Swish 门控线性单元激活函数，提升模型性能和训练稳定性。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">📐</div>
-                    <h3>RoPE with YaRN Scaling</h3>
-                    <p>Rotary Position Embedding with extended context support up to 32K tokens.</p>
+                    <h3 data-lang="en">RoPE with YaRN Scaling</h3>
+                    <h3 data-lang="zh">RoPE + YaRN 缩放</h3>
+                    <p data-lang="en">Rotary Position Embedding with extended context support up to 32K tokens.</p>
+                    <p data-lang="zh">旋转位置嵌入，支持高达 32K tokens 的扩展上下文。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🤗</div>
-                    <h3>HuggingFace Integration</h3>
-                    <p>Fully compatible with the Transformers library for easy model loading and deployment.</p>
+                    <h3 data-lang="en">HuggingFace Integration</h3>
+                    <h3 data-lang="zh">HuggingFace 集成</h3>
+                    <p data-lang="en">Fully compatible with the Transformers library for easy model loading and deployment.</p>
+                    <p data-lang="zh">完全兼容 Transformers 库，轻松加载和部署模型。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🚀</div>
-                    <h3>vLLM Adapter</h3>
-                    <p>High-performance inference with OpenAI-compatible API for production deployment.</p>
+                    <h3 data-lang="en">vLLM Adapter</h3>
+                    <h3 data-lang="zh">vLLM 适配器</h3>
+                    <p data-lang="en">High-performance inference with OpenAI-compatible API for production deployment.</p>
+                    <p data-lang="zh">高性能推理，提供与 OpenAI 兼容的 API，适用于生产部署。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🔧</div>
-                    <h3>LoRA Fine-Tuning</h3>
-                    <p>Parameter-efficient fine-tuning with LoRA adapters, training only 0.1-1% of parameters.</p>
+                    <h3 data-lang="en">LoRA Fine-Tuning</h3>
+                    <h3 data-lang="zh">LoRA 微调</h3>
+                    <p data-lang="en">Parameter-efficient fine-tuning with LoRA adapters, training only 0.1-1% of parameters.</p>
+                    <p data-lang="zh">使用 LoRA 适配器进行参数高效微调，仅训练 0.1-1% 的参数。</p>
                 </div>
             </div>
         </div>
@@ -515,30 +572,34 @@
     <section class="architecture" id="architecture">
         <div class="container">
             <div class="arch-content">
-                <div class="arch-text">
-                    <h2>Modern Architecture</h2>
-                    <p>VerMind implements state-of-the-art transformer architecture with optimizations for both training efficiency and inference speed.</p>
-                    <ul class="arch-list">
-                        <li>Grouped Query Attention (GQA) for memory efficiency</li>
-                        <li>RMSNorm for stable training</li>
-                        <li>Flash Attention support for faster computation</li>
-                        <li>Distributed Data Parallel (DDP) training</li>
-                        <li>Mixed precision training (bfloat16/float16)</li>
-                        <li>Automatic checkpoint management</li>
-                    </ul>
-                </div>
-                <div class="code-block">
-                    <pre><span class="comment"># Model Configuration</span>
-{
-  <span class="string">"model_type"</span>: <span class="string">"vermind"</span>,
-  <span class="string">"hidden_size"</span>: <span class="number">768</span>,
-  <span class="string">"num_hidden_layers"</span>: <span class="number">16</span>,
-  <span class="string">"num_attention_heads"</span>: <span class="number">8</span>,
-  <span class="string">"num_key_value_heads"</span>: <span class="number">2</span>,
-  <span class="string">"vocab_size"</span>: <span class="number">6400</span>,
-  <span class="string">"max_position_embeddings"</span>: <span class="number">32768</span>,
-  <span class="string">"rope_theta"</span>: <span class="number">1000000.0</span>
-}</pre>
+                <h2 data-lang="en">Modern Architecture</h2>
+                <h2 data-lang="zh">现代架构</h2>
+                <p data-lang="en">VerMind implements state-of-the-art transformer architecture with optimizations for both training efficiency and inference speed.</p>
+                <p data-lang="zh">VerMind 实现了最先进的 Transformer 架构，针对训练效率和推理速度进行了优化。</p>
+                
+                <img src="https://raw.githubusercontent.com/nev8rz/vermind/main/docs/assets/architecture.png" alt="VerMind Architecture" class="arch-image">
+                
+                <div class="arch-details">
+                    <div class="arch-detail-item">
+                        <h4>RMSNorm</h4>
+                        <p data-lang="en">Root Mean Square Layer Normalization for stable training</p>
+                        <p data-lang="zh">均方根层归一化，确保训练稳定性</p>
+                    </div>
+                    <div class="arch-detail-item">
+                        <h4>RoPE</h4>
+                        <p data-lang="en">Rotary Position Embedding for positional information</p>
+                        <p data-lang="zh">旋转位置嵌入，注入位置信息</p>
+                    </div>
+                    <div class="arch-detail-item">
+                        <h4>GQA</h4>
+                        <p data-lang="en">Grouped Query Attention for memory efficiency</p>
+                        <p data-lang="zh">分组查询注意力，提升内存效率</p>
+                    </div>
+                    <div class="arch-detail-item">
+                        <h4>SwiGLU FFN</h4>
+                        <p data-lang="en">Swish-Gated Linear Unit Feed-Forward Network</p>
+                        <p data-lang="zh">Swish 门控线性单元前馈网络</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -546,13 +607,16 @@
 
     <section class="quickstart" id="quickstart">
         <div class="container">
-            <h2 class="section-title">Quick Start</h2>
-            <p class="section-subtitle">Get up and running in minutes</p>
+            <h2 class="section-title" data-lang="en">Quick Start</h2>
+            <h2 class="section-title" data-lang="zh">快速开始</h2>
+            <p class="section-subtitle" data-lang="en">Get up and running in minutes</p>
+            <p class="section-subtitle" data-lang="zh">几分钟内即可启动运行</p>
             <div class="quickstart-steps">
                 <div class="step">
                     <div class="step-header">
                         <div class="step-number">1</div>
-                        <h3>Clone & Install</h3>
+                        <h3 data-lang="en">Clone & Install</h3>
+                        <h3 data-lang="zh">克隆 & 安装</h3>
                     </div>
                     <code>git clone https://github.com/nev8rz/vermind.git
 cd vermind
@@ -562,27 +626,28 @@ uv pip install -e .</code>
                 <div class="step">
                     <div class="step-header">
                         <div class="step-number">2</div>
-                        <h3>Pre-training</h3>
+                        <h3 data-lang="en">Pre-training</h3>
+                        <h3 data-lang="zh">预训练</h3>
                     </div>
-                    <code>python train/pretrain.py \
-    --data_path /path/to/data.jsonl \
-    --save_dir ./output/pretrain \
-    --hidden_size 768 \
-    --num_hidden_layers 16</code>
+                    <code>bash scripts/pretrain.sh
+# or
+python train/pretrain.py --data_path /path/to/data.jsonl</code>
                 </div>
                 <div class="step">
                     <div class="step-header">
                         <div class="step-number">3</div>
-                        <h3>Fine-Tuning (SFT or LoRA)</h3>
+                        <h3 data-lang="en">Fine-Tuning (SFT or LoRA)</h3>
+                        <h3 data-lang="zh">微调 (SFT 或 LoRA)</h3>
                     </div>
-                    <code>python train/sft.py \
-    --data_path /path/to/sft_data.jsonl \
-    --from_weight ./output/pretrain/checkpoint</code>
+                    <code>bash scripts/sft.sh
+# or
+bash scripts/lora.sh</code>
                 </div>
                 <div class="step">
                     <div class="step-header">
                         <div class="step-number">4</div>
-                        <h3>Deploy with vLLM</h3>
+                        <h3 data-lang="en">Deploy with vLLM</h3>
+                        <h3 data-lang="zh">使用 vLLM 部署</h3>
                     </div>
                     <code>python vllm_adapter/start_server.py /path/to/checkpoint
 # Server starts at http://localhost:8000</code>
@@ -593,14 +658,18 @@ uv pip install -e .</code>
 
     <section class="models" id="models">
         <div class="container">
-            <h2 class="section-title">Model Sizes</h2>
-            <p class="section-subtitle">Choose the right size for your needs</p>
+            <h2 class="section-title" data-lang="en">Model Sizes</h2>
+            <h2 class="section-title" data-lang="zh">模型规格</h2>
+            <p class="section-subtitle" data-lang="en">Choose the right size for your needs</p>
+            <p class="section-subtitle" data-lang="zh">根据需求选择合适的规格</p>
             <div class="models-table">
                 <table>
                     <thead>
                         <tr>
-                            <th>Model</th>
-                            <th>Parameters</th>
+                            <th data-lang="en">Model</th>
+                            <th data-lang="zh">模型</th>
+                            <th data-lang="en">Parameters</th>
+                            <th data-lang="zh">参数量</th>
                             <th>Hidden Size</th>
                             <th>Layers</th>
                             <th>Attention Heads</th>
@@ -632,7 +701,8 @@ uv pip install -e .</code>
 
     <footer>
         <div class="container">
-            <p>VerMind is open source and released under the MIT License.</p>
+            <p data-lang="en">VerMind is open source and released under the MIT License.</p>
+            <p data-lang="zh">VerMind 是开源项目，基于 MIT 许可证发布。</p>
             <div class="links">
                 <a href="https://github.com/nev8rz/vermind" target="_blank">GitHub</a>
                 <a href="https://github.com/nev8rz/vermind/issues" target="_blank">Issues</a>
@@ -640,5 +710,22 @@ uv pip install -e .</code>
             </div>
         </div>
     </footer>
+
+    <script>
+        // Language switching
+        const langBtns = document.querySelectorAll('[data-lang-switch]');
+        langBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const lang = btn.getAttribute('data-lang-switch');
+                langBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                if (lang === 'zh') {
+                    document.body.classList.add('zh');
+                } else {
+                    document.body.classList.remove('zh');
+                }
+            });
+        });
+    </script>
 </body>
 </html>

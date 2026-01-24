@@ -93,7 +93,7 @@ uv pip install -e .
 
 ## 🏃‍♀️ Usage Examples
 
-VerMind provides a complete training pipeline with convenient shell scripts located in `scripts/`. The training workflow follows: **Tokenizer → Pre-training → SFT → LoRA → Deployment**.
+VerMind provides a complete training pipeline with convenient shell scripts located in `examples/`. The training workflow follows: **Tokenizer → Pre-training → SFT → LoRA → Deployment**.
 
 ### 1. Train Tokenizer
 
@@ -112,7 +112,7 @@ Pre-train the model from scratch on a large corpus. Use the provided script or r
 
 ```bash
 # Option 1: Use the launch script (runs in tmux)
-bash scripts/pretrain.sh
+bash examples/pretrain.sh
 
 # Option 2: Run directly with custom parameters
 python train/pretrain.py \
@@ -130,7 +130,7 @@ Fine-tune the pre-trained model on instruction-following data:
 
 ```bash
 # Option 1: Use the launch script (runs in tmux)
-bash scripts/sft.sh
+bash examples/sft.sh
 
 # Option 2: Run directly with custom parameters
 python train/sft.py \
@@ -148,7 +148,7 @@ For parameter-efficient fine-tuning, use LoRA to adapt the model with minimal re
 
 ```bash
 # Option 1: Use the launch script (runs in tmux)
-bash scripts/lora.sh
+bash examples/lora.sh
 
 # Option 2: Run directly with custom parameters
 python train/lora.py \

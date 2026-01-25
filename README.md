@@ -38,7 +38,7 @@
 
 -   🚀 **Performance & Efficiency**: Implements GQA and Flash Attention to reduce memory footprint and accelerate both training and inference.
 -   🧠 **Modern Architecture**: Incorporates the latest advancements in LLM architecture, such as SwiGLU activation and Rotary Position Embedding (RoPE) with YaRN scaling.
--   🔧 **End-to-End Solution**: Provides a complete workflow from tokenizer training and pre-training to supervised fine-tuning (SFT), LoRA, and deployment with a vLLM adapter.
+-   🔧 **End-to-End Solution**: Provides a complete workflow from tokenizer training and pre-training to supervised fine-tuning (SFT) with packed training support, DPO alignment, LoRA, and deployment with a vLLM adapter.
 -   🧩 **Extensibility & Customization**: The modular design makes it easy to experiment with new ideas, swap components, and adapt the model to specific needs.
 -   🎓 **Educational Value**: Serves as an excellent learning resource for understanding the inner workings of modern language models, with detailed code and documentation.
 
@@ -52,6 +52,8 @@
 | 🚀 **vLLM Adapter**                   | Enables blazing-fast inference speeds and an OpenAI-compatible API server out-of-the-box.                                                |
 | 🎨 **LoRA Fine-Tuning**               | Supports parameter-efficient fine-tuning (PEFT) with Low-Rank Adaptation for rapid and memory-efficient customization.                 |
 | 🌐 **Distributed Training**           | Built-in support for Distributed Data Parallel (DDP) to scale training across multiple GPUs.                                             |
+| 📦 **Packed SFT Training**            | Efficient sequence packing for SFT training, reducing padding waste and improving GPU utilization by packing multiple sequences into batches. |
+| 🎯 **Direct Preference Optimization (DPO)** | Align models with human preferences using preference pairs, improving output quality without requiring a separate reward model. |
 
 ## 🏗️ Architecture Overview
 
@@ -93,7 +95,7 @@ uv pip install -e .
 
 ## 🏃‍♀️ Usage Examples
 
-VerMind provides a complete training pipeline with convenient shell scripts located in `examples/`. The training workflow follows: **Tokenizer → Pre-training → SFT → LoRA → Deployment**.
+VerMind provides a complete training pipeline with convenient shell scripts located in `examples/`. The training workflow follows: **Tokenizer → Pre-training → SFT → DPO (optional) → LoRA → Deployment**.
 
 ### 1. Train Tokenizer
 
@@ -142,6 +144,28 @@ python train/sft.py \
     --learning_rate 5e-6
 ```
 
+#### Packed SFT Training
+
+For more efficient training with better GPU utilization, use the packed SFT training mode which packs multiple sequences into a single batch:
+
+```bash
+# Option 1: Use the launch script (runs in tmux)
+bash examples/sft_packed.sh
+
+# Option 2: Run directly with custom parameters
+python train/sft_packed.py \
+    --data_path /path/to/sft_data.jsonl \
+    --save_dir ./output/sft_packed \
+    --tokenizer_path ./vermind_tokenizer \
+    --from_weight ./output/pretrain/pretrain_768 \
+    --epochs 3 \
+    --learning_rate 5e-6 \
+    --use_packed 1 \
+    --max_seq_len 2048
+```
+
+Packed SFT training improves training efficiency by packing multiple sequences of varying lengths into fixed-size batches, reducing padding waste and improving GPU utilization.
+
 ### 4. LoRA Fine-Tuning
 
 For parameter-efficient fine-tuning, use LoRA to adapt the model with minimal resources:
@@ -161,7 +185,27 @@ python train/lora.py \
     --lora_rank 16
 ```
 
-### 5. Merge LoRA Weights
+### 5. Direct Preference Optimization (DPO)
+
+Fine-tune the model using DPO to align with human preferences by learning from preference pairs:
+
+```bash
+# Run DPO training directly
+python train/dpo.py \
+    --data_path /path/to/dpo_data.jsonl \
+    --save_dir ./output/dpo \
+    --tokenizer_path ./vermind_tokenizer \
+    --from_weight ./output/sft/full_sft_768 \
+    --epochs 3 \
+    --learning_rate 1e-6 \
+    --beta 0.1 \
+    --batch_size 32 \
+    --max_seq_len 2048
+```
+
+DPO training uses preference pairs (chosen vs rejected responses) to optimize the model's output quality without requiring a separate reward model.
+
+### 6. Merge LoRA Weights
 
 After LoRA training, merge the adapter weights into the base model:
 
@@ -171,7 +215,7 @@ python scripts/merge_lora.py \
     --lora_path ./output/lora/lora_768
 ```
 
-### 6. Model Evaluation
+### 7. Model Evaluation
 
 Evaluate your model interactively:
 
@@ -181,7 +225,7 @@ python scripts/eval_llm.py \
     --use_chat_template 1
 ```
 
-### 7. Deploy with vLLM
+### 8. Deploy with vLLM
 
 Start a high-performance API server compatible with OpenAI's client:
 
@@ -192,7 +236,7 @@ python vllm_adapter/start_server.py ./output/lora/lora_768/checkpoint_merged
 # The server is now running at http://localhost:8000
 ```
 
-### 8. Making API Requests
+### 9. Making API Requests
 
 ```python
 from openai import OpenAI

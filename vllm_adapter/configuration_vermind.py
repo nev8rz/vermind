@@ -1,5 +1,4 @@
 # coding=utf-8
-# Copyright 2024 VerMind Team
 # Configuration file for VerMind model
 
 import sys

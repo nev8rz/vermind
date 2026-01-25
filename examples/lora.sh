@@ -6,11 +6,11 @@ cd /root/vermind
 source .venv/bin/activate
 
 uv run python train/lora.py \
-    --data_path /root/vermind/dataset/lora_self_cognition.jsonl \
+    --data_path /root/vermind/dataset/lora_identity.jsonl \
     --save_dir /root/vermind/output/lora \
     --tokenizer_path /root/vermind/vermind_tokenizer \
-    --epochs 5 \
-    --batch_size 16 \
+    --epochs 50 \
+    --batch_size 32 \
     --learning_rate 1e-4 \
     --warmup_ratio 0.03 \
     --num_workers 6 \
@@ -27,4 +27,4 @@ uv run python train/lora.py \
 
 #  python scripts/merge_lora.py     --model_path /root/vermind/output/sft/full_sft_768   --lora_path /root/vermind/output/lora/lora_768
 
-# python vllm_adapter/start_server.py ./output/lora/lora_768/checkpoint_79_merged/
+# python vllm_adapter/start_server.py ./output/lora/lora_768/checkpoint_159_merged/

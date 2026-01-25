@@ -26,14 +26,15 @@ class VerMindBlock(nn.Module): # decoder
         # self.mlp = FeedForward(config) if not config.use_moe else MOEFeedForward(config)
         self.mlp = FeedForward(config) # swiglu 
 
-    def forward(self, hidden_states, position_embeddings, past_key_value=None, use_cache=False, attention_mask=None):
+    def forward(self, hidden_states, position_embeddings, past_key_value=None, use_cache=False, attention_mask=None, position_ids=None):
         residual = hidden_states # 原始值
         hidden_states, present_key_value = self.self_attn(
             self.input_layernorm(hidden_states), # prenorm
             position_embeddings,
             past_key_value, 
             use_cache, 
-            attention_mask
+            attention_mask,
+            position_ids=position_ids  # 传递 position_ids 到 Attention
         ) # 
         hidden_states += residual # 残差连接
         hidden_states = hidden_states + self.mlp(self.post_attention_layernorm(hidden_states)) # prenorm -> swiglu -> 残差连接
@@ -65,6 +66,7 @@ class VerMindModel(nn.Module):
                 attention_mask: Optional[torch.Tensor] = None,
                 past_key_values: Optional[List[Tuple[torch.Tensor, torch.Tensor]]] = None,
                 use_cache: bool = False,
+                position_ids: Optional[torch.Tensor] = None,
                 **kwargs):
         batch_size, seq_length = input_ids.shape # inputs [B,T]
         if hasattr(past_key_values, 'layers'): past_key_values = None # 兼容，可能有的框架是用的kv cache2，这里退化了，不走kv cache了
@@ -73,10 +75,15 @@ class VerMindModel(nn.Module):
         # 已经缓存了多少个历史 token 的 KV，
         hidden_states = self.dropout(self.embed_tokens(input_ids))
 
+        # 生成 position embeddings
+        # 如果提供了 position_ids，Attention 层会使用它来正确索引
+        # 否则使用默认的绝对位置
+        # 注意：即使提供了 position_ids，我们仍然需要传递完整的 cos/sin 给 Attention
+        # 因为 Attention 层内部会根据 position_ids 来索引
         position_embeddings = (
-            self.freqs_cos[start_pos:start_pos + seq_length],
-            self.freqs_sin[start_pos:start_pos + seq_length]
-        ) # position embeddings
+            self.freqs_cos,  # (max_seq_len, head_dim) - 传递完整的 cos
+            self.freqs_sin   # (max_seq_len, head_dim) - 传递完整的 sin
+        )
 
         presents = [] # kv cache
         for layer_idx, (layer, past_key_value) in enumerate(zip(self.layers, past_key_values)):
@@ -85,7 +92,8 @@ class VerMindModel(nn.Module):
                 position_embeddings,
                 past_key_value=past_key_value,
                 use_cache=use_cache,
-                attention_mask=attention_mask
+                attention_mask=attention_mask,
+                position_ids=position_ids  # 传递 position_ids 到每一层
             ) # hidden states, kv cache
             presents.append(present) # kv cache
 
@@ -116,12 +124,14 @@ class VerMindForCausalLM(PreTrainedModel, GenerationMixin):
                 past_key_values: Optional[List[Tuple[torch.Tensor, torch.Tensor]]] = None,
                 use_cache: bool = False,
                 logits_to_keep: Union[int, torch.Tensor] = 0,
+                position_ids: Optional[torch.Tensor] = None,
                 **args):
         hidden_states, past_key_values, aux_loss = self.model(
             input_ids=input_ids,
             attention_mask=attention_mask,
             past_key_values=past_key_values,
             use_cache=use_cache,
+            position_ids=position_ids,  # 传递 position_ids 到 model
             **args
         ) # 模型输出，hidden states, kv cache, aux loss
         slice_indices = slice(-logits_to_keep, None) if isinstance(logits_to_keep, int) else logits_to_keep

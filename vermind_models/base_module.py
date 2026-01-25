@@ -46,8 +46,39 @@ def apply_rotary_pos_emb(q, k, cos, sin, position_ids=None, unsqueeze_dim=1):
     def rotate_half(x):
         return torch.cat((-x[..., x.shape[-1] // 2:], x[..., : x.shape[-1] // 2]), dim=-1)
 
-    q_embed = (q * cos.unsqueeze(unsqueeze_dim)) + (rotate_half(q) * sin.unsqueeze(unsqueeze_dim))
-    k_embed = (k * cos.unsqueeze(unsqueeze_dim)) + (rotate_half(k) * sin.unsqueeze(unsqueeze_dim))
+    if position_ids is not None:
+        # 使用 position_ids 按样本索引 cos/sin。打包数据下每个 batch 的 position_ids 不同，必须按行索引。
+        # position_ids: (batch_size, seq_len) 或 (seq_len,)
+        # cos, sin: (max_seq_len, head_dim)
+        # q, k: (batch_size, seq_len, num_heads, head_dim)
+        
+        if position_ids.dim() == 1:
+            pos_ids = position_ids  # (seq_len,)
+            cos_selected = cos[pos_ids]   # (seq_len, head_dim)
+            sin_selected = sin[pos_ids]   # (seq_len, head_dim)
+            cos_selected = cos_selected.unsqueeze(0).unsqueeze(2)  # (1, seq_len, 1, head_dim)
+            sin_selected = sin_selected.unsqueeze(0).unsqueeze(2)  # (1, seq_len, 1, head_dim)
+        else:
+            # (batch_size, seq_len) -> 每个样本用自己的 position_ids 索引
+            # cos[position_ids] -> (batch_size, seq_len, head_dim)
+            cos_selected = cos[position_ids]  # (B, S, head_dim)
+            sin_selected = sin[position_ids]  # (B, S, head_dim)
+            cos_selected = cos_selected.unsqueeze(2)  # (B, S, 1, head_dim)
+            sin_selected = sin_selected.unsqueeze(2)  # (B, S, 1, head_dim)
+        
+        q_embed = (q * cos_selected) + (rotate_half(q) * sin_selected)
+        k_embed = (k * cos_selected) + (rotate_half(k) * sin_selected)
+    else:
+        # 无 position_ids：使用绝对位置 0..seq_len-1，从 cos/sin 取前 seq_len 再广播
+        # cos, sin: (max_seq_len, head_dim); q, k: (bsz, seq_len, num_heads, head_dim)
+        seq_len = q.shape[1]
+        cos_s = cos[:seq_len]   # (seq_len, head_dim)
+        sin_s = sin[:seq_len]   # (seq_len, head_dim)
+        cos_s = cos_s.unsqueeze(0).unsqueeze(2)   # (1, seq_len, 1, head_dim)
+        sin_s = sin_s.unsqueeze(0).unsqueeze(2)   # (1, seq_len, 1, head_dim)
+        q_embed = (q * cos_s) + (rotate_half(q) * sin_s)
+        k_embed = (k * cos_s) + (rotate_half(k) * sin_s)
+    
     return q_embed, k_embed
 
 

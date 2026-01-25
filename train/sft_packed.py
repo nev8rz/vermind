@@ -10,7 +10,7 @@ from torch import optim
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader, DistributedSampler
 from vermind_models.config import VerMindConfig
-from data_loader import SFTDataset
+from data_loader import SFTDataset, SFTDatasetPacked, collate_fn_packed
 from utils import (
     get_lr, init_distributed_mode, setup_seed, Logger, is_main_process, SkipBatchSampler,
     save_checkpoint, load_checkpoint, resume_training, get_base_save_path
@@ -21,8 +21,36 @@ from vermind_models.models.modeling_vermind import VerMindForCausalLM
 warnings.filterwarnings('ignore')
 
 
-def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None, lm_config=None, base_save_path=None):
-    start_time = time.time() # 开始时间
+# 监控 hook 函数
+monitoring_data = {
+    'attention_mask_info': [],
+    'position_ids_info': [],
+    'attention_output_stats': []
+}
+
+def monitor_attention_hook(module, input, output):
+    """监控 attention 层的输出"""
+    if isinstance(output, tuple):
+        attn_output = output[0]
+    else:
+        attn_output = output
+    
+    if attn_output is not None:
+        stats = {
+            'shape': list(attn_output.shape),
+            'mean': attn_output.mean().item(),
+            'std': attn_output.std().item(),
+            'min': attn_output.min().item(),
+            'max': attn_output.max().item(),
+        }
+        monitoring_data['attention_output_stats'].append(stats)
+
+
+def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None, lm_config=None, base_save_path=None, 
+                use_packed=False, monitor_steps=5):
+    start_time = time.time()
+    monitored_steps = 0
+    
     for step, batch in enumerate(loader, start=start_step + 1):
         # 支持返回 2 个值（input_ids, labels）、3 个值（input_ids, labels, attention_mask）
         # 4 个值（input_ids, labels, attention_mask_2d, boundaries）
@@ -31,9 +59,11 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
             input_ids, labels = batch
             attention_mask = None
             position_ids = None
+            boundaries = None
         elif len(batch) == 3:
             input_ids, labels, attention_mask = batch
             position_ids = None
+            boundaries = None
         elif len(batch) == 4:
             # 4 个值：input_ids, labels, attention_mask_2d, boundaries
             input_ids, labels, attention_mask, boundaries = batch
@@ -42,23 +72,84 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
             # 5 个值：input_ids, labels, attention_mask_2d, boundaries, position_ids
             input_ids, labels, attention_mask, boundaries, position_ids = batch
         
-        input_ids = input_ids.to(args.device) # 将input_ids移动到设备
-        labels = labels.to(args.device) # 将labels移动到设备
+        input_ids = input_ids.to(args.device)
+        labels = labels.to(args.device)
         if attention_mask is not None:
-            attention_mask = attention_mask.to(args.device) # 将attention_mask移动到设备
+            attention_mask = attention_mask.to(args.device)
         if position_ids is not None:
-            position_ids = position_ids.to(args.device) # 将position_ids移动到设备
+            position_ids = position_ids.to(args.device)
         
-        lr = get_lr(epoch * iters + step, args.epochs * iters, args.learning_rate, args.warmup_ratio) # 获取学习率
-        for param_group in optimizer.param_groups: # 遍历优化器参数组
-            param_group['lr'] = lr # 设置学习率
+        # 监控前几个 step
+        if monitored_steps < monitor_steps:
+            Logger(f"\n=== Step {step} 监控信息 ===")
+            Logger(f"Input shape: {input_ids.shape}")
+            Logger(f"Labels shape: {labels.shape}")
+            
+            if attention_mask is not None:
+                mask_info = {
+                    'shape': list(attention_mask.shape),
+                    'dim': attention_mask.dim(),
+                    'dtype': str(attention_mask.dtype),
+                    'sum': attention_mask.sum().item() if attention_mask.numel() < 1e6 else 'too_large',
+                    'mean': attention_mask.float().mean().item(),
+                    'min': attention_mask.min().item(),
+                    'max': attention_mask.max().item(),
+                }
+                if attention_mask.dim() == 3:
+                    # 2D mask: (batch, seq, seq)
+                    mask_info['is_2d'] = True
+                    # 检查第一个样本的 mask 结构
+                    if input_ids.shape[0] > 0:
+                        sample_mask = attention_mask[0]
+                        mask_info['sample_0_shape'] = list(sample_mask.shape)
+                        mask_info['sample_0_sum'] = sample_mask.sum().item()
+                        # 检查对角线（causal 特性）
+                        diag_sum = torch.diagonal(sample_mask, dim1=0, dim2=1).sum().item()
+                        mask_info['sample_0_diag_sum'] = diag_sum
+                else:
+                    mask_info['is_2d'] = False
+                
+                monitoring_data['attention_mask_info'].append(mask_info)
+                Logger(f"Attention Mask: {mask_info}")
+            else:
+                Logger("Attention Mask: None")
+            
+            if position_ids is not None:
+                pos_info = {
+                    'shape': list(position_ids.shape),
+                    'dtype': str(position_ids.dtype),
+                    'min': position_ids.min().item(),
+                    'max': position_ids.max().item(),
+                    'mean': position_ids.float().mean().item(),
+                }
+                # 检查每个样本的 position_ids 范围
+                if position_ids.shape[0] > 0:
+                    for i in range(min(3, position_ids.shape[0])):
+                        sample_pos = position_ids[i]
+                        pos_info[f'sample_{i}_min'] = sample_pos.min().item()
+                        pos_info[f'sample_{i}_max'] = sample_pos.max().item()
+                        pos_info[f'sample_{i}_unique_count'] = len(torch.unique(sample_pos))
+                
+                monitoring_data['position_ids_info'].append(pos_info)
+                Logger(f"Position IDs: {pos_info}")
+            else:
+                Logger("Position IDs: None (使用默认绝对位置)")
+            
+            if boundaries is not None:
+                Logger(f"Boundaries: {boundaries[:2] if len(boundaries) > 0 else 'None'} (显示前2个样本)")
+            
+            monitored_steps += 1
+        
+        lr = get_lr(epoch * iters + step, args.epochs * iters, args.learning_rate, args.warmup_ratio)
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = lr
 
-        with autocast_ctx: # 混合精度训练
+        with autocast_ctx:
             res = model(input_ids, labels=labels, attention_mask=attention_mask, position_ids=position_ids)
             loss = res.loss + res.aux_loss
-            loss = loss / args.accumulation_steps # 损失除以梯度累积步数
+            loss = loss / args.accumulation_steps
 
-        scaler.scale(loss).backward() # 梯度累积
+        scaler.scale(loss).backward()
 
         if (step + 1) % args.accumulation_steps == 0:
             scaler.unscale_(optimizer)
@@ -72,7 +163,6 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
         if step % args.log_interval == 0 or step == iters - 1:
             spend_time = time.time() - start_time
             current_loss = loss.item() * args.accumulation_steps
-            # current_aux_loss = res.aux_loss.item() if res.aux_loss is not None else 0.0
             current_aux_loss = 0.0
             current_logits_loss = current_loss - current_aux_loss
             current_lr = optimizer.param_groups[-1]['lr']
@@ -82,7 +172,6 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
 
         if (step % args.save_interval == 0 or step == iters - 1) and is_main_process():
             model.eval()
-            # 使用在训练开始前确定的基础路径
             save_checkpoint(
                 model=model,
                 tokenizer=tokenizer,
@@ -93,9 +182,9 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
                 epoch=epoch,
                 step=step,
                 swanlab=swanlab_run,
-                max_checkpoints=3,  # 默认保留3个checkpoint
+                max_checkpoints=3,
                 save_interval=args.save_interval,
-                steps_per_epoch=iters  # 传入每个 epoch 的总步数
+                steps_per_epoch=iters
             )
             model.train()
 
@@ -103,13 +192,13 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="VerMind Full SFT")
-    parser.add_argument("--save_dir", type=str, default="../out", help="模型保存目录")
-    parser.add_argument('--save_weight', default='full_sft', type=str, help="保存权重的前缀名")
-    parser.add_argument("--epochs", type=int, default=2, help="训练轮数")
+    parser = argparse.ArgumentParser(description="VerMind SFT Packed (支持打包数据集训练)")
+    parser.add_argument("--save_dir", type=str, default="../output/sft_packed", help="模型保存目录")
+    parser.add_argument('--save_weight', default='sft_packed', type=str, help="保存权重的前缀名")
+    parser.add_argument("--epochs", type=int, default=3, help="训练轮数")
     parser.add_argument("--batch_size", type=int, default=16, help="batch size")
-    parser.add_argument("--learning_rate", type=float, default=1e-6, help="初始学习率")
-    parser.add_argument("--warmup_ratio", type=float, default=0.03, help="预热步数比例（0.0-1.0）")
+    parser.add_argument("--learning_rate", type=float, default=5e-6, help="初始学习率")
+    parser.add_argument("--warmup_ratio", type=float, default=0.03, help="预热步数比例")
     parser.add_argument("--device", type=str, default="cuda:0" if torch.cuda.is_available() else "cpu", help="训练设备")
     parser.add_argument("--dtype", type=str, default="bfloat16", help="混合精度类型")
     parser.add_argument("--num_workers", type=int, default=8, help="数据加载线程数")
@@ -119,17 +208,18 @@ if __name__ == "__main__":
     parser.add_argument("--save_interval", type=int, default=1000, help="模型保存间隔")
     parser.add_argument('--hidden_size', default=768, type=int, help="隐藏层维度")
     parser.add_argument('--num_hidden_layers', default=16, type=int, help="隐藏层数量")
-    parser.add_argument('--num_attention_heads', default=8, type=int, help="注意力头数（query heads）")
-    parser.add_argument('--num_key_value_heads', default=2, type=int, help="键值头数（key-value heads）")
-    parser.add_argument('--max_seq_len', default=340, type=int, help="训练的最大截断长度（中文1token≈1.5~1.7字符）")
-    parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1], help="是否使用MoE架构（0=否，1=是）")
-    parser.add_argument("--data_path", type=str, default="../dataset/sft.jsonl", help="SFT训练数据路径")
-    parser.add_argument("--tokenizer_path", type=str, default="../vermind_tokenizer", help="tokenizer路径")
-    parser.add_argument('--from_weight', default='pretrain', type=str, help="基于哪个权重训练，为none则从头开始（支持目录路径或旧格式文件名）")
-    parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="是否自动检测&续训（0=否，1=是）")
+    parser.add_argument('--num_attention_heads', default=8, type=int, help="注意力头数")
+    parser.add_argument('--num_key_value_heads', default=2, type=int, help="键值头数")
+    parser.add_argument('--max_seq_len', default=2048, type=int, help="训练的最大序列长度")
+    parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1], help="是否使用MoE架构")
+    parser.add_argument("--data_path", type=str, default="../dataset/sft_512.jsonl", help="SFT训练数据路径")
+    parser.add_argument("--tokenizer_path", type=str, default="/root/vermind/vermind_tokenizer", help="tokenizer路径")
+    parser.add_argument('--from_weight', default='/root/vermind/output/pretrain', type=str, help="基于哪个权重训练（默认从pretrain加载）")
+    parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="是否自动检测&续训")
+    parser.add_argument("--use_packed", default=1, type=int, choices=[0, 1], help="是否使用打包数据集（0=否，1=是，默认1）")
+    parser.add_argument("--monitor_steps", type=int, default=0, help="监控前N个step的详细信息（0=不监控）")
     parser.add_argument("--use_swanlab", action="store_true", help="是否使用swanlab")
-    parser.add_argument("--swanlab_project", type=str, default="VerMind-Full-SFT", help="swanlab项目名")
-    parser.add_argument("--use_compile", default=0, type=int, choices=[0, 1], help="是否使用torch.compile加速（0=否，1=是）")
+    parser.add_argument("--swanlab_project", type=str, default="VerMind-SFT-Packed", help="swanlab项目名")
     args = parser.parse_args()
 
     # ========== 1. 初始化环境和随机种子 ==========
@@ -138,20 +228,18 @@ if __name__ == "__main__":
     setup_seed(42 + (dist.get_rank() if dist.is_initialized() else 0))
     
     # ========== 2. 配置目录、模型参数、检查ckp ==========
-    os.makedirs(args.save_dir, exist_ok=True) # 创建保存目录
+    os.makedirs(args.save_dir, exist_ok=True)
     lm_config = VerMindConfig(
         hidden_size=args.hidden_size, 
         num_hidden_layers=args.num_hidden_layers, 
         num_attention_heads=args.num_attention_heads,
         num_key_value_heads=args.num_key_value_heads,
         use_moe=bool(args.use_moe)
-    ) # 配置模型参数
+    )
     
-    # 检查 resume checkpoint（使用新的 transformers 接口）
     training_state = None
     resume_path = None
     if args.from_resume == 1:
-        # 尝试从标准 transformers 格式目录恢复
         moe_suffix = '_moe' if lm_config.use_moe else ''
         resume_path = f'../checkpoints/{args.save_weight}_{lm_config.hidden_size}{moe_suffix}'
         if os.path.exists(resume_path) and os.path.isdir(resume_path):
@@ -164,45 +252,38 @@ if __name__ == "__main__":
     
     # ========== 3. 设置混合精度 ==========
     device_type = "cuda" if "cuda" in args.device else "cpu"
-    dtype = torch.bfloat16 if args.dtype == "bfloat16" else torch.float16 #
-    autocast_ctx = nullcontext() if device_type == "cpu" else torch.amp.autocast('cuda', dtype=dtype) # 混合精度训练上下文
+    dtype = torch.bfloat16 if args.dtype == "bfloat16" else torch.float16
+    autocast_ctx = nullcontext() if device_type == "cpu" else torch.amp.autocast('cuda', dtype=dtype)
     
-    # ========== 4. 配swanlab ==========
+    # ========== 4. 配置swanlab ==========
     swanlab_run = None
     if args.use_swanlab and is_main_process():
         swanlab_id = training_state.get('swanlab_id') if training_state else None
         resume = 'must' if swanlab_id else None
-        swanlab_run_name = f"VerMind-Full-SFT-Epoch-{args.epochs}-BatchSize-{args.batch_size}-LearningRate-{args.learning_rate}"
+        swanlab_run_name = f"VerMind-SFT-Packed-Epoch-{args.epochs}-BatchSize-{args.batch_size}-LearningRate-{args.learning_rate}"
         swanlab.init(project=args.swanlab_project, name=swanlab_run_name, id=swanlab_id, resume=resume)
         swanlab_run = swanlab.get_run()
     
     # ========== 5. 定义模型、数据、优化器 ==========
-    # 初始化模型和 tokenizer
     if training_state is not None:
-        # 从 resume checkpoint 加载
         model, tokenizer, _ = load_checkpoint(resume_path, device=args.device, load_training_state=False)
         Logger('Model and tokenizer loaded from resume checkpoint')
     elif args.from_weight != 'none':
-        # 从指定权重加载
         if os.path.isdir(args.from_weight):
-            # 如果是目录，检查是否是基础路径（包含 checkpoint_* 子目录）还是具体的 checkpoint 路径
             import glob
             checkpoint_pattern = os.path.join(args.from_weight, "checkpoint_*")
             checkpoints = [p for p in glob.glob(checkpoint_pattern) if os.path.isdir(p)]
             
             if checkpoints:
-                # 如果是基础路径（包含多个 checkpoint），自动选择最新的
                 checkpoints.sort(key=lambda x: int(os.path.basename(x).replace("checkpoint_", "")))
                 latest_checkpoint = checkpoints[-1]
                 Logger(f'Found {len(checkpoints)} checkpoints, using latest: {os.path.basename(latest_checkpoint)}')
                 model, tokenizer, _ = load_checkpoint(latest_checkpoint, device=args.device, load_training_state=False)
                 Logger(f'Model and tokenizer loaded from {latest_checkpoint}')
             else:
-                # 如果是具体的 checkpoint 目录，直接加载
                 model, tokenizer, _ = load_checkpoint(args.from_weight, device=args.device, load_training_state=False)
                 Logger(f'Model and tokenizer loaded from {args.from_weight}')
         else:
-            # 兼容旧格式：从 .pth 文件加载
             model = VerMindForCausalLM(lm_config)
             tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path)
             moe_suffix = '_moe' if lm_config.use_moe else ''
@@ -216,21 +297,32 @@ if __name__ == "__main__":
                 Logger(f'Model weights loaded from {weight_path}')
             model = model.to(args.device)
     else:
-        # 从头开始训练
         model = VerMindForCausalLM(lm_config)
         tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path)
         model = model.to(args.device)
         Logger('Model initialized from scratch')
     
-    if args.use_compile == 1: 
-        model = torch.compile(model) # 使用torch.compile加速模型
-        Logger('torch.compile enabled')
+    # 注册监控 hook（监控第一个 attention 层）
+    if len(model.model.layers) > 0:
+        first_attn = model.model.layers[0].self_attn
+        first_attn.register_forward_hook(monitor_attention_hook)
+        Logger('Registered attention monitoring hook')
     
-    train_ds = SFTDataset(args.data_path, tokenizer, max_length=args.max_seq_len) # 初始化数据集
-    train_sampler = DistributedSampler(train_ds) if dist.is_initialized() else None # 分布式采样器
-    scaler = torch.amp.GradScaler('cuda', enabled=(args.dtype == 'float16')) 
-    # 梯度缩放器，只需要在 dtype 为 float16 时启用，因为float16的数值范围更小，容易下溢为0
-    optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate) # 优化器
+    # 初始化数据集
+    if args.use_packed:
+        Logger('使用打包数据集 (SFTDatasetPacked)')
+        train_ds = SFTDatasetPacked(args.data_path, tokenizer, max_length=args.max_seq_len, use_cache=True)
+        collate_fn = collate_fn_packed
+    else:
+        Logger('使用普通数据集 (SFTDataset)')
+        train_ds = SFTDataset(args.data_path, tokenizer, max_length=args.max_seq_len)
+        collate_fn = None
+    
+    Logger(f'数据集大小: {len(train_ds)} 个样本/序列')
+    
+    train_sampler = DistributedSampler(train_ds) if dist.is_initialized() else None
+    scaler = torch.amp.GradScaler('cuda', enabled=(args.dtype == 'float16'))
+    optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate)
     
     # ========== 6. 从ckp恢复状态 ==========
     start_epoch, start_step = 0, 0
@@ -243,10 +335,9 @@ if __name__ == "__main__":
     # ========== 7. DDP包模型 ==========
     if dist.is_initialized():
         model._ddp_params_and_buffers_to_ignore = {"freqs_cos", "freqs_sin"}
-        # 忽略freqs_cos和freqs_sin，ddp时候，由于每张卡的seq_length不同，会导致freqs_cos和freqs_sin的shape不同，导致ddp失败，所以不要同步freqs_cos和freqs_sin
         model = DistributedDataParallel(model, device_ids=[local_rank])
     
-    # ========== 7.5. 确定基础保存路径（在训练开始前确定一次） ==========
+    # ========== 7.5. 确定基础保存路径 ==========
     moe_suffix = '_moe' if lm_config.use_moe else ''
     original_save_path = f'{args.save_dir}/{args.save_weight}_{lm_config.hidden_size}{moe_suffix}'
     base_save_path = get_base_save_path(original_save_path)
@@ -256,17 +347,29 @@ if __name__ == "__main__":
     # ========== 8. 开始训练 ==========
     for epoch in range(start_epoch, args.epochs):
         train_sampler and train_sampler.set_epoch(epoch)
-        setup_seed(42 + epoch); 
+        setup_seed(42 + epoch)
         indices = torch.randperm(len(train_ds)).tolist()
         skip = start_step if (epoch == start_epoch and start_step > 0) else 0
-        batch_sampler = SkipBatchSampler(train_sampler or indices, args.batch_size, skip) # 跳过步数采样器
-        loader = DataLoader(train_ds, batch_sampler=batch_sampler, num_workers=args.num_workers, pin_memory=True)
-        # 标准 ddp 多卡数据加载方式，pin_memory=True 把数据提前拷贝到 CUDA 固定内存（pinned memory），提升数据加载速度
-        if skip > 0: # 如果跳过步数大于0，则打印日志，一般是resume模式
+        batch_sampler = SkipBatchSampler(train_sampler or indices, args.batch_size, skip)
+        loader = DataLoader(train_ds, batch_sampler=batch_sampler, num_workers=args.num_workers, 
+                           pin_memory=True, collate_fn=collate_fn)
+        
+        if skip > 0:
             Logger(f'Epoch [{epoch + 1}/{args.epochs}]: 跳过前{start_step}个step，从step {start_step + 1}开始')
-            train_epoch(epoch, loader, len(loader) + skip, start_step, swanlab_run, tokenizer, lm_config, base_save_path)
+            train_epoch(epoch, loader, len(loader) + skip, start_step, swanlab_run, tokenizer, lm_config, base_save_path,
+                       use_packed=bool(args.use_packed), monitor_steps=args.monitor_steps)
         else:
-            train_epoch(epoch, loader, len(loader), 0, swanlab_run, tokenizer, lm_config, base_save_path)
+            train_epoch(epoch, loader, len(loader), 0, swanlab_run, tokenizer, lm_config, base_save_path,
+                       use_packed=bool(args.use_packed), monitor_steps=args.monitor_steps)
     
-    # ========== 9. 清理分布进程 ==========
+    # ========== 9. 打印监控总结 ==========
+    if is_main_process():
+        Logger('\n' + '='*80)
+        Logger('监控总结:')
+        Logger(f'Attention Mask 信息: {len(monitoring_data["attention_mask_info"])} 条记录')
+        Logger(f'Position IDs 信息: {len(monitoring_data["position_ids_info"])} 条记录')
+        Logger(f'Attention 输出统计: {len(monitoring_data["attention_output_stats"])} 条记录')
+        Logger('='*80)
+    
+    # ========== 10. 清理分布进程 ==========
     if dist.is_initialized(): dist.destroy_process_group()

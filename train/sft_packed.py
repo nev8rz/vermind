@@ -21,15 +21,13 @@ from vermind_models.models.modeling_vermind import VerMindForCausalLM
 warnings.filterwarnings('ignore')
 
 
-# 监控 hook 函数
 monitoring_data = {
-    'attention_mask_info': [],
+    'cu_seqlens_info': [],
     'position_ids_info': [],
     'attention_output_stats': []
 }
 
 def monitor_attention_hook(module, input, output):
-    """监控 attention 层的输出"""
     if isinstance(output, tuple):
         attn_output = output[0]
     else:
@@ -52,67 +50,37 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
     monitored_steps = 0
     
     for step, batch in enumerate(loader, start=start_step + 1):
-        # 支持返回 2 个值（input_ids, labels）、3 个值（input_ids, labels, attention_mask）
-        # 4 个值（input_ids, labels, attention_mask_2d, boundaries）
-        # 或 5 个值（input_ids, labels, attention_mask_2d, boundaries, position_ids）
         if len(batch) == 2:
             input_ids, labels = batch
-            attention_mask = None
+            cu_seqlens = None
             position_ids = None
-            boundaries = None
-        elif len(batch) == 3:
-            input_ids, labels, attention_mask = batch
-            position_ids = None
-            boundaries = None
         elif len(batch) == 4:
-            # 4 个值：input_ids, labels, attention_mask_2d, boundaries
-            input_ids, labels, attention_mask, boundaries = batch
-            position_ids = None
+            input_ids, labels, cu_seqlens, position_ids = batch
         else:
-            # 5 个值：input_ids, labels, attention_mask_2d, boundaries, position_ids
-            input_ids, labels, attention_mask, boundaries, position_ids = batch
+            input_ids, labels, cu_seqlens, _, position_ids = batch
         
         input_ids = input_ids.to(args.device)
         labels = labels.to(args.device)
-        if attention_mask is not None:
-            attention_mask = attention_mask.to(args.device)
+        if cu_seqlens is not None:
+            cu_seqlens = cu_seqlens.to(args.device)
         if position_ids is not None:
             position_ids = position_ids.to(args.device)
         
-        # 监控前几个 step
         if monitored_steps < monitor_steps:
             Logger(f"\n=== Step {step} 监控信息 ===")
             Logger(f"Input shape: {input_ids.shape}")
             Logger(f"Labels shape: {labels.shape}")
             
-            if attention_mask is not None:
-                mask_info = {
-                    'shape': list(attention_mask.shape),
-                    'dim': attention_mask.dim(),
-                    'dtype': str(attention_mask.dtype),
-                    'sum': attention_mask.sum().item() if attention_mask.numel() < 1e6 else 'too_large',
-                    'mean': attention_mask.float().mean().item(),
-                    'min': attention_mask.min().item(),
-                    'max': attention_mask.max().item(),
+            if cu_seqlens is not None:
+                cu_info = {
+                    'shape': list(cu_seqlens.shape),
+                    'dtype': str(cu_seqlens.dtype),
+                    'values': cu_seqlens.tolist()[:10] if len(cu_seqlens) > 10 else cu_seqlens.tolist(),
+                    'batch_size': len(cu_seqlens) - 1,
+                    'total_tokens': cu_seqlens[-1].item() if len(cu_seqlens) > 0 else 0,
                 }
-                if attention_mask.dim() == 3:
-                    # 2D mask: (batch, seq, seq)
-                    mask_info['is_2d'] = True
-                    # 检查第一个样本的 mask 结构
-                    if input_ids.shape[0] > 0:
-                        sample_mask = attention_mask[0]
-                        mask_info['sample_0_shape'] = list(sample_mask.shape)
-                        mask_info['sample_0_sum'] = sample_mask.sum().item()
-                        # 检查对角线（causal 特性）
-                        diag_sum = torch.diagonal(sample_mask, dim1=0, dim2=1).sum().item()
-                        mask_info['sample_0_diag_sum'] = diag_sum
-                else:
-                    mask_info['is_2d'] = False
-                
-                monitoring_data['attention_mask_info'].append(mask_info)
-                Logger(f"Attention Mask: {mask_info}")
-            else:
-                Logger("Attention Mask: None")
+                monitoring_data['cu_seqlens_info'].append(cu_info)
+                Logger(f"cu_seqlens: {cu_info}")
             
             if position_ids is not None:
                 pos_info = {
@@ -122,21 +90,18 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
                     'max': position_ids.max().item(),
                     'mean': position_ids.float().mean().item(),
                 }
-                # 检查每个样本的 position_ids 范围
                 if position_ids.shape[0] > 0:
-                    for i in range(min(3, position_ids.shape[0])):
-                        sample_pos = position_ids[i]
-                        pos_info[f'sample_{i}_min'] = sample_pos.min().item()
-                        pos_info[f'sample_{i}_max'] = sample_pos.max().item()
-                        pos_info[f'sample_{i}_unique_count'] = len(torch.unique(sample_pos))
+                    unique_starts = []
+                    for i in range(min(100, len(position_ids))):
+                        if i == 0 or position_ids[i] == 0:
+                            unique_starts.append(i)
+                    pos_info['sample_starts'] = unique_starts[:5]
                 
                 monitoring_data['position_ids_info'].append(pos_info)
                 Logger(f"Position IDs: {pos_info}")
             else:
                 Logger("Position IDs: None (使用默认绝对位置)")
             
-            if boundaries is not None:
-                Logger(f"Boundaries: {boundaries[:2] if len(boundaries) > 0 else 'None'} (显示前2个样本)")
             
             monitored_steps += 1
         
@@ -145,7 +110,7 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
             param_group['lr'] = lr
 
         with autocast_ctx:
-            res = model(input_ids, labels=labels, attention_mask=attention_mask, position_ids=position_ids)
+            res = model(input_ids, labels=labels, cu_seqlens=cu_seqlens, position_ids=position_ids)
             loss = res.loss + res.aux_loss
             loss = loss / args.accumulation_steps
 
@@ -182,7 +147,7 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
                 epoch=epoch,
                 step=step,
                 swanlab=swanlab_run,
-                max_checkpoints=3,
+                max_checkpoints=args.max_checkpoints,
                 save_interval=args.save_interval,
                 steps_per_epoch=iters
             )
@@ -206,13 +171,15 @@ if __name__ == "__main__":
     parser.add_argument("--grad_clip", type=float, default=1.0, help="梯度裁剪阈值")
     parser.add_argument("--log_interval", type=int, default=100, help="日志打印间隔")
     parser.add_argument("--save_interval", type=int, default=1000, help="模型保存间隔")
+    parser.add_argument("--max_checkpoints", type=int, default=3, help="最大保留的 checkpoint 数量")
     parser.add_argument('--hidden_size', default=768, type=int, help="隐藏层维度")
     parser.add_argument('--num_hidden_layers', default=16, type=int, help="隐藏层数量")
     parser.add_argument('--num_attention_heads', default=8, type=int, help="注意力头数")
     parser.add_argument('--num_key_value_heads', default=2, type=int, help="键值头数")
     parser.add_argument('--max_seq_len', default=2048, type=int, help="训练的最大序列长度")
     parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1], help="是否使用MoE架构")
-    parser.add_argument("--data_path", type=str, default="../dataset/sft_512.jsonl", help="SFT训练数据路径")
+    parser.add_argument("--data_path", type=str, default="../dataset/sft_512.jsonl", help="SFT训练数据路径（use_packed=0 时用）")
+    parser.add_argument("--parquet_path", type=str, default="", help="Packed Parquet 路径（use_packed=1 时用）；不填则从 data_path 推导：.cache/sft_packed/<stem>.parquet")
     parser.add_argument("--tokenizer_path", type=str, default="/root/vermind/vermind_tokenizer", help="tokenizer路径")
     parser.add_argument('--from_weight', default='/root/vermind/output/pretrain', type=str, help="基于哪个权重训练（默认从pretrain加载）")
     parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="是否自动检测&续训")
@@ -302,7 +269,6 @@ if __name__ == "__main__":
         model = model.to(args.device)
         Logger('Model initialized from scratch')
     
-    # 注册监控 hook（监控第一个 attention 层）
     if len(model.model.layers) > 0:
         first_attn = model.model.layers[0].self_attn
         first_attn.register_forward_hook(monitor_attention_hook)
@@ -311,7 +277,13 @@ if __name__ == "__main__":
     # 初始化数据集
     if args.use_packed:
         Logger('使用打包数据集 (SFTDatasetPacked)')
-        train_ds = SFTDatasetPacked(args.data_path, tokenizer, max_length=args.max_seq_len, use_cache=True)
+        parquet_path = args.parquet_path.strip()
+        if not parquet_path:
+            base = os.path.splitext(os.path.basename(args.data_path))[0]
+            cache_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".cache", "sft_packed")
+            parquet_path = os.path.join(cache_dir, f"{base}.parquet")
+            Logger(f'未指定 --parquet_path，使用: {parquet_path}')
+        train_ds = SFTDatasetPacked(parquet_path=parquet_path, max_length=args.max_seq_len)
         collate_fn = collate_fn_packed
     else:
         Logger('使用普通数据集 (SFTDataset)')
@@ -366,7 +338,7 @@ if __name__ == "__main__":
     if is_main_process():
         Logger('\n' + '='*80)
         Logger('监控总结:')
-        Logger(f'Attention Mask 信息: {len(monitoring_data["attention_mask_info"])} 条记录')
+        Logger(f'cu_seqlens 信息: {len(monitoring_data["cu_seqlens_info"])} 条记录')
         Logger(f'Position IDs 信息: {len(monitoring_data["position_ids_info"])} 条记录')
         Logger(f'Attention 输出统计: {len(monitoring_data["attention_output_stats"])} 条记录')
         Logger('='*80)

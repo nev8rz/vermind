@@ -52,7 +52,7 @@
 | 🚀 **vLLM Adapter**                   | Enables blazing-fast inference speeds and an OpenAI-compatible API server out-of-the-box.                                                |
 | 🎨 **LoRA Fine-Tuning**               | Supports parameter-efficient fine-tuning (PEFT) with Low-Rank Adaptation for rapid and memory-efficient customization.                 |
 | 🌐 **Distributed Training**           | Built-in support for Distributed Data Parallel (DDP) to scale training across multiple GPUs.                                             |
-| 📦 **Packed SFT Training**            | Efficient sequence packing for SFT training, reducing padding waste and improving GPU utilization by packing multiple sequences into batches. |
+| 📦 **Packed SFT Training**            | Efficient sequence packing for SFT training with Varlen FlashAttention, reducing padding waste and improving GPU utilization by packing multiple sequences into batches. |
 | 🎯 **Direct Preference Optimization (DPO)** | Align models with human preferences using preference pairs, improving output quality without requiring a separate reward model. |
 
 ## 🏗️ Architecture Overview
@@ -146,7 +146,7 @@ python train/sft.py \
 
 #### Packed SFT Training
 
-For more efficient training with better GPU utilization, use the packed SFT training mode which packs multiple sequences into a single batch:
+For more efficient training with better GPU utilization, use the packed SFT training mode which packs multiple sequences into a single batch using Varlen FlashAttention:
 
 ```bash
 # Option 1: Use the launch script (runs in tmux)
@@ -155,6 +155,7 @@ bash examples/sft_packed.sh
 # Option 2: Run directly with custom parameters
 python train/sft_packed.py \
     --data_path /path/to/sft_data.jsonl \
+    --parquet_path ./cache/sft_packed/sft.parquet \
     --save_dir ./output/sft_packed \
     --tokenizer_path ./vermind_tokenizer \
     --from_weight ./output/pretrain/pretrain_768 \
@@ -164,7 +165,18 @@ python train/sft_packed.py \
     --max_seq_len 2048
 ```
 
-Packed SFT training improves training efficiency by packing multiple sequences of varying lengths into fixed-size batches, reducing padding waste and improving GPU utilization.
+**Preprocessing data for packed training:**
+
+```bash
+# First, preprocess your JSONL data into packed Parquet format
+python scripts/pre_sftdatapacked.py \
+    --jsonl_path /path/to/sft_data.jsonl \
+    --output_path ./cache/sft_packed/sft.parquet \
+    --tokenizer_path ./vermind_tokenizer \
+    --max_seq_len 2048
+```
+
+Packed SFT training improves training efficiency by packing multiple sequences of varying lengths into fixed-size batches, reducing padding waste and improving GPU utilization. It uses Varlen FlashAttention for efficient attention computation without explicit attention masks.
 
 ### 4. LoRA Fine-Tuning
 

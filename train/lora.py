@@ -75,14 +75,12 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
             if swanlab: swanlab.log({"loss": current_loss, "learning_rate": current_lr, "epoch_time": eta_min})
 
         if (step % args.save_interval == 0 or step == iters - 1) and is_main_process():
-            # 保存LoRA权重（使用与 save_checkpoint 相同的目录结构）
+            # 保存LoRA权重（与 utils.save_checkpoint 一致的编号逻辑）
             global_step = epoch * iters + step
-            # checkpoint 编号基于全局步数和 save_interval
-            # 如果是最后一个 step，使用实际的 global_step，避免覆盖之前的 checkpoint
-            if step == iters - 1:
-                checkpoint_num = global_step
-            else:
+            if global_step >= args.save_interval:
                 checkpoint_num = (global_step // args.save_interval) * args.save_interval
+            else:
+                checkpoint_num = global_step
             save_lora(
                 model, 
                 base_save_path, 

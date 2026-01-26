@@ -93,9 +93,9 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
                 epoch=epoch,
                 step=step,
                 swanlab=swanlab_run,
-                max_checkpoints=3,  # 默认保留3个checkpoint
+                max_checkpoints=args.max_checkpoints,
                 save_interval=args.save_interval,
-                steps_per_epoch=iters  # 传入每个 epoch 的总步数
+                steps_per_epoch=iters
             )
             model.train()
 
@@ -117,6 +117,7 @@ if __name__ == "__main__":
     parser.add_argument("--grad_clip", type=float, default=1.0, help="梯度裁剪阈值")
     parser.add_argument("--log_interval", type=int, default=100, help="日志打印间隔")
     parser.add_argument("--save_interval", type=int, default=1000, help="模型保存间隔")
+    parser.add_argument("--max_checkpoints", type=int, default=3, help="最大保留的 checkpoint 数量")
     parser.add_argument('--hidden_size', default=768, type=int, help="隐藏层维度")
     parser.add_argument('--num_hidden_layers', default=16, type=int, help="隐藏层数量")
     parser.add_argument('--num_attention_heads', default=8, type=int, help="注意力头数（query heads）")

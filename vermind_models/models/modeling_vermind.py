@@ -26,7 +26,7 @@ class VerMindBlock(nn.Module): # decoder
         # self.mlp = FeedForward(config) if not config.use_moe else MOEFeedForward(config)
         self.mlp = FeedForward(config) # swiglu 
 
-    def forward(self, hidden_states, position_embeddings, past_key_value=None, use_cache=False, attention_mask=None, position_ids=None):
+    def forward(self, hidden_states, position_embeddings, past_key_value=None, use_cache=False, attention_mask=None, position_ids=None, cu_seqlens=None):
         residual = hidden_states # 原始值
         hidden_states, present_key_value = self.self_attn(
             self.input_layernorm(hidden_states), # prenorm
@@ -34,7 +34,8 @@ class VerMindBlock(nn.Module): # decoder
             past_key_value, 
             use_cache, 
             attention_mask,
-            position_ids=position_ids  # 传递 position_ids 到 Attention
+            position_ids=position_ids,  # 传递 position_ids 到 Attention
+            cu_seqlens=cu_seqlens  # 传递 cu_seqlens 到 Attention（用于 varlen flash attention）
         ) # 
         hidden_states += residual # 残差连接
         hidden_states = hidden_states + self.mlp(self.post_attention_layernorm(hidden_states)) # prenorm -> swiglu -> 残差连接
@@ -67,13 +68,22 @@ class VerMindModel(nn.Module):
                 past_key_values: Optional[List[Tuple[torch.Tensor, torch.Tensor]]] = None,
                 use_cache: bool = False,
                 position_ids: Optional[torch.Tensor] = None,
+                cu_seqlens: Optional[torch.Tensor] = None,
                 **kwargs):
-        batch_size, seq_length = input_ids.shape # inputs [B,T]
+        is_varlen = (cu_seqlens is not None and 
+                     input_ids.dim() == 1)  # varlen 模式下 input_ids 应该是 1D (total_tokens,)
+        
+        if is_varlen:
+            total_tokens = input_ids.shape[0]
+            hidden_states = self.dropout(self.embed_tokens(input_ids))
+        else:
+            batch_size, seq_length = input_ids.shape
+            hidden_states = self.dropout(self.embed_tokens(input_ids))
+        
         if hasattr(past_key_values, 'layers'): past_key_values = None # 兼容，可能有的框架是用的kv cache2，这里退化了，不走kv cache了
         past_key_values = past_key_values or [None] * len(self.layers) 
         start_pos = past_key_values[0][0].shape[1] if past_key_values[0] is not None else 0
         # 已经缓存了多少个历史 token 的 KV，
-        hidden_states = self.dropout(self.embed_tokens(input_ids))
 
         # 生成 position embeddings
         # 如果提供了 position_ids，Attention 层会使用它来正确索引
@@ -93,7 +103,8 @@ class VerMindModel(nn.Module):
                 past_key_value=past_key_value,
                 use_cache=use_cache,
                 attention_mask=attention_mask,
-                position_ids=position_ids  # 传递 position_ids 到每一层
+                position_ids=position_ids,  # 传递 position_ids 到每一层
+                cu_seqlens=cu_seqlens  # 传递 cu_seqlens 到每一层（用于 varlen flash attention）
             ) # hidden states, kv cache
             presents.append(present) # kv cache
 
@@ -125,6 +136,7 @@ class VerMindForCausalLM(PreTrainedModel, GenerationMixin):
                 use_cache: bool = False,
                 logits_to_keep: Union[int, torch.Tensor] = 0,
                 position_ids: Optional[torch.Tensor] = None,
+                cu_seqlens: Optional[torch.Tensor] = None,
                 **args):
         hidden_states, past_key_values, aux_loss = self.model(
             input_ids=input_ids,
@@ -132,10 +144,19 @@ class VerMindForCausalLM(PreTrainedModel, GenerationMixin):
             past_key_values=past_key_values,
             use_cache=use_cache,
             position_ids=position_ids,  # 传递 position_ids 到 model
+            cu_seqlens=cu_seqlens,  # 传递 cu_seqlens 到 model（用于 varlen flash attention）
             **args
         ) # 模型输出，hidden states, kv cache, aux loss
-        slice_indices = slice(-logits_to_keep, None) if isinstance(logits_to_keep, int) else logits_to_keep
-        logits = self.lm_head(hidden_states[:, slice_indices, :])
+        
+        # 检查是否是 varlen 模式
+        is_varlen = cu_seqlens is not None
+        if is_varlen:
+            # Varlen 模式：hidden_states 是 (total_tokens, hidden_size)
+            logits = self.lm_head(hidden_states)  # (total_tokens, vocab_size)
+        else:
+            # 标准模式：hidden_states 是 (batch_size, seq_length, hidden_size)
+            slice_indices = slice(-logits_to_keep, None) if isinstance(logits_to_keep, int) else logits_to_keep
+            logits = self.lm_head(hidden_states[:, slice_indices, :])
 
         # slice_indices 是用于切片，只保留最后 logits_to_keep 个 token 的 logits
         # lm_head 是用于将 hidden states 映射到 logits[B,T,V],同样只保留最后 logits_to_keep 个 token 的 logits
@@ -143,10 +164,17 @@ class VerMindForCausalLM(PreTrainedModel, GenerationMixin):
         # 计算损失
         loss = None
         if labels is not None:
-            # 在这里进行shift，将 logits 和 labels 都向右移动一位，然后计算损失
-            shift_logits = logits[..., :-1, :].contiguous()
-            shift_labels = labels[..., 1:].contiguous()
-            loss = F.cross_entropy(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1), ignore_index=-100) # 交叉熵损失
+            if is_varlen:
+                # Varlen 模式：logits 和 labels 都是 (total_tokens,)
+                # 直接计算损失，不需要 shift（因为每个样本内部已经是 causal）
+                shift_logits = logits[:-1, :].contiguous()  # (total_tokens-1, vocab_size)
+                shift_labels = labels[1:].contiguous()  # (total_tokens-1,)
+                loss = F.cross_entropy(shift_logits, shift_labels, ignore_index=-100)
+            else:
+                # 标准模式：在这里进行shift，将 logits 和 labels 都向右移动一位，然后计算损失
+                shift_logits = logits[..., :-1, :].contiguous()
+                shift_labels = labels[..., 1:].contiguous()
+                loss = F.cross_entropy(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1), ignore_index=-100) # 交叉熵损失
 
         output = CausalLMOutputWithPast(loss=loss, logits=logits, past_key_values=past_key_values, hidden_states=hidden_states) # 格式化输出
         output.aux_loss = aux_loss

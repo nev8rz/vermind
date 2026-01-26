@@ -569,8 +569,8 @@
                     <div class="feature-icon">📦</div>
                     <h3 data-lang="en">Packed SFT Training</h3>
                     <h3 data-lang="zh">打包式 SFT 训练</h3>
-                    <p data-lang="en">Efficient sequence packing for SFT training, reducing padding waste and improving GPU utilization.</p>
-                    <p data-lang="zh">高效的序列打包 SFT 训练，减少填充浪费，提升 GPU 利用率。</p>
+                    <p data-lang="en">Efficient sequence packing for SFT training with Varlen FlashAttention, reducing padding waste and improving GPU utilization.</p>
+                    <p data-lang="zh">使用 Varlen FlashAttention 的高效序列打包 SFT 训练，减少填充浪费，提升 GPU 利用率。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🎯</div>
@@ -654,7 +654,7 @@ python train/pretrain.py --data_path /path/to/data.jsonl</code>
                         <h3 data-lang="zh">微调 (SFT、DPO 或 LoRA)</h3>
                     </div>
                     <code>bash examples/sft.sh
-# Packed SFT for better efficiency
+# Packed SFT with Varlen FlashAttention for better efficiency
 bash examples/sft_packed.sh
 # DPO for preference alignment
 python train/dpo.py --data_path /path/to/dpo_data.jsonl

@@ -7,7 +7,7 @@ source .venv/bin/activate
 
 uv run python train/sft_packed.py \
     --data_path /root/vermind/dataset/sft.jsonl \
-    --parquet_path /root/vermind/.cache/sft_packed/sft.parquet \
+    --parquet_path /root/vermind/.cache/sft_packed/sft_converted.parquet \
     --save_dir /root/vermind/output/sft_packed \
     --tokenizer_path /root/vermind/vermind_tokenizer \
     --epochs 3 \

@@ -16,7 +16,6 @@ from utils import (
     save_checkpoint, load_checkpoint, resume_training, get_base_save_path
 )
 from transformers import AutoTokenizer
-from vermind_models import VerMindConfig
 from vermind_models.models.modeling_vermind import VerMindForCausalLM
 
 warnings.filterwarnings('ignore')

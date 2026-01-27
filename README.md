@@ -202,20 +202,25 @@ python train/lora.py \
 Fine-tune the model using DPO to align with human preferences by learning from preference pairs:
 
 ```bash
-# Run DPO training directly
+# Option 1: Use the launch script (runs in tmux, uses --dpo_aggregate mean)
+bash examples/dpo.sh
+
+# Option 2: Run directly with custom parameters
 python train/dpo.py \
     --data_path /path/to/dpo_data.jsonl \
     --save_dir ./output/dpo \
     --tokenizer_path ./vermind_tokenizer \
+    --ref_weight ./output/sft/full_sft_768 \
     --from_weight ./output/sft/full_sft_768 \
     --epochs 3 \
     --learning_rate 1e-6 \
     --beta 0.1 \
-    --batch_size 32 \
-    --max_seq_len 2048
+    --dpo_aggregate mean \
+    --batch_size 16 \
+    --max_seq_len 340
 ```
 
-DPO training uses preference pairs (chosen vs rejected responses) to optimize the model's output quality without requiring a separate reward model.
+DPO training uses preference pairs (chosen vs rejected responses) to optimize the model's output quality without requiring a separate reward model. Use `--dpo_aggregate mean` (default for small models) or `sum` for sequence-level log-prob aggregation.
 
 ### 6. Merge LoRA Weights
 

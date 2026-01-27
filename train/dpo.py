@@ -23,36 +23,51 @@ warnings.filterwarnings('ignore')
 
 
 def logits_to_log_probs(logits, labels):
+    # logits 转换为 log_probs
     # logits shape: (batch_size, seq_len, vocab_size)
     # labels shape: (batch_size, seq_len)
     # log_probs shape: (batch_size, seq_len)
-    log_probs = F.log_softmax(logits, dim=2)
-    log_probs_per_token = torch.gather(log_probs, dim=2, index=labels.unsqueeze(2)).squeeze(-1)
-    return log_probs_per_token
+    log_probs = F.log_softmax(logits, dim=2) # 使用内置函数（避免溢出）
+    safe_labels = labels.clamp_min(0) # 确保labels不会小于0
+    log_probs_per_token = torch.gather(log_probs, dim=2, index=safe_labels.unsqueeze(2)).squeeze(-1) # 收集log_probs中对应labels的值
+    return log_probs_per_token # (batch_size, seq_len)
 
 
-def dpo_loss(ref_log_probs, policy_log_probs, mask, beta):
-    # ref_log_probs 和 policy_log_probs 都是 shape: (batch_size, seq_len)
-    # https://github.com/jingyaogong/minimind/issues/298
-    seq_lengths = mask.sum(dim=1, keepdim=True).clamp_min(1e-8)  # 防止零长度mask导致除零NaN
-    ref_log_probs = (ref_log_probs * mask).sum(dim=1) / seq_lengths.squeeze()
-    policy_log_probs = (policy_log_probs * mask).sum(dim=1) / seq_lengths.squeeze()
+def dpo_loss(ref_log_probs, policy_log_probs, mask, beta=0.1, aggregate="mean"):
+    """
+    DPO Loss. 序列级 log prob 支持 sum 或 mean。
+    aggregate: "sum" 整句概率不除长度；"mean" 对 mask 位置求平均。
+    104m 小模型使用 mean
+    """
+    policy_raw = (policy_log_probs * mask).sum(dim=1)
+    ref_raw = (ref_log_probs * mask).sum(dim=1)
+    if aggregate == "mean":
+        seq_lengths = mask.sum(dim=1, keepdim=True).clamp_min(1e-8).squeeze(-1)
+        policy_log_probs_sum = policy_raw / seq_lengths
+        ref_log_probs_sum = ref_raw / seq_lengths
+    else:
+        policy_log_probs_sum = policy_raw
+        ref_log_probs_sum = ref_raw
 
-    # 将 chosen 和 rejected 数据分开
-    batch_size = ref_log_probs.shape[0]
-    chosen_ref_log_probs = ref_log_probs[:batch_size // 2]
-    reject_ref_log_probs = ref_log_probs[batch_size // 2:]
-    chosen_policy_log_probs = policy_log_probs[:batch_size // 2]
-    reject_policy_log_probs = policy_log_probs[batch_size // 2:]
+    batch_size = ref_log_probs.shape[0] // 2
+    policy_chosen_logps = policy_log_probs_sum[:batch_size]
+    policy_rejected_logps = policy_log_probs_sum[batch_size:]
+    ref_chosen_logps = ref_log_probs_sum[:batch_size]
+    ref_rejected_logps = ref_log_probs_sum[batch_size:]
 
-    pi_logratios = chosen_policy_log_probs - reject_policy_log_probs
-    ref_logratios = chosen_ref_log_probs - reject_ref_log_probs
-    logits = pi_logratios - ref_logratios
-    loss = -F.logsigmoid(beta * logits)
-    return loss.mean()
+    policy_logratios = policy_chosen_logps - policy_rejected_logps
+    ref_logratios = ref_chosen_logps - ref_rejected_logps
+    logits = policy_logratios - ref_logratios
+    losses = -F.logsigmoid(beta * logits)
+
+    with torch.no_grad():
+        chosen_rewards = (beta * (policy_chosen_logps - ref_chosen_logps)).detach()
+        rejected_rewards = (beta * (policy_rejected_logps - ref_rejected_logps)).detach()
+
+    return losses.mean(), chosen_rewards.mean(), rejected_rewards.mean()
 
 
-def train_epoch(epoch, loader, iters, ref_model, lm_config, start_step=0, swanlab=None, beta=0.1, tokenizer=None, base_save_path=None):
+def train_epoch(epoch, loader, iters, ref_model, lm_config, start_step=0, swanlab=None, beta=0.1, aggregate="mean", tokenizer=None, base_save_path=None):
     start_time = time.time()
     
     for step, batch in enumerate(loader, start=start_step + 1):
@@ -80,7 +95,7 @@ def train_epoch(epoch, loader, iters, ref_model, lm_config, start_step=0, swanla
             logits = outputs.logits
             policy_log_probs = logits_to_log_probs(logits, y)
             
-            dpo_loss_val = dpo_loss(ref_log_probs, policy_log_probs, mask, beta=beta)
+            dpo_loss_val, chosen_rewards, rejected_rewards = dpo_loss(ref_log_probs, policy_log_probs, mask, beta=beta, aggregate=aggregate)
             loss = dpo_loss_val + outputs.aux_loss
             loss = loss / args.accumulation_steps
 
@@ -98,12 +113,23 @@ def train_epoch(epoch, loader, iters, ref_model, lm_config, start_step=0, swanla
             current_loss = loss.item() * args.accumulation_steps
             current_dpo_loss = dpo_loss_val.item()
             current_aux_loss = outputs.aux_loss.item()
+            cr_val = chosen_rewards.item()
+            rr_val = rejected_rewards.item()
             current_lr = optimizer.param_groups[-1]['lr']
             eta_min = spend_time / (step + 1) * iters // 60 - spend_time // 60
-            
-            Logger(f'Epoch:[{epoch + 1}/{args.epochs}]({step}/{iters}), loss: {current_loss:.4f}, dpo_loss: {current_dpo_loss:.4f}, aux_loss: {current_aux_loss:.4f}, learning_rate: {current_lr:.8f}, epoch_time: {eta_min:.3f}min')
-            
-            if swanlab: swanlab.log({"loss": current_loss, "dpo_loss": current_dpo_loss, "aux_loss": current_aux_loss, "learning_rate": current_lr, "epoch_time": eta_min})
+
+            Logger(f'Epoch:[{epoch + 1}/{args.epochs}]({step}/{iters}), loss: {current_loss:.4f}, dpo_loss: {current_dpo_loss:.4f}, chosen_reward: {cr_val:.4f}, rejected_reward: {rr_val:.4f}, learning_rate: {current_lr:.8f}, epoch_time: {eta_min:.3f}min')
+
+            if swanlab:
+                swanlab.log({
+                    "loss": current_loss,
+                    "dpo_loss": current_dpo_loss,
+                    "aux_loss": current_aux_loss,
+                    "chosen_reward": cr_val,
+                    "rejected_reward": rr_val,
+                    "learning_rate": current_lr,
+                    "epoch_time": eta_min,
+                })
 
         if (step % args.save_interval == 0 or step == iters - 1) and is_main_process():
             model.eval()
@@ -124,7 +150,8 @@ def train_epoch(epoch, loader, iters, ref_model, lm_config, start_step=0, swanla
             model.train()
 
         del x_chosen, x_rejected, y_chosen, y_rejected, mask_chosen, mask_rejected, x, y, mask
-        del ref_outputs, ref_logits, ref_log_probs, outputs, logits, policy_log_probs, loss
+        del ref_outputs, ref_logits, ref_log_probs, outputs, logits, policy_log_probs
+        del dpo_loss_val, chosen_rewards, rejected_rewards, loss
 
 
 if __name__ == "__main__":
@@ -155,6 +182,7 @@ if __name__ == "__main__":
     parser.add_argument('--ref_weight', type=str, required=True, help="参考模型权重路径（用于计算ref_log_probs）")
     parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="是否自动检测&续训（0=否，1=是）")
     parser.add_argument("--beta", type=float, default=0.1, help="DPO损失函数中的beta参数")
+    parser.add_argument("--dpo_aggregate", type=str, default="mean", choices=["sum", "mean"], help="序列级log prob聚合: sum 或 mean")
     parser.add_argument("--use_swanlab", action="store_true", help="是否使用swanlab")
     parser.add_argument("--swanlab_project", type=str, default="VerMind-DPO", help="swanlab项目名")
     parser.add_argument("--use_compile", default=0, type=int, choices=[0, 1], help="是否使用torch.compile加速（0=否，1=是）")
@@ -318,9 +346,9 @@ if __name__ == "__main__":
         loader = DataLoader(train_ds, batch_sampler=batch_sampler, num_workers=args.num_workers, pin_memory=True)
         if skip > 0:
             Logger(f'Epoch [{epoch + 1}/{args.epochs}]: 跳过前{start_step}个step，从step {start_step + 1}开始')
-            train_epoch(epoch, loader, len(loader) + skip, ref_model, lm_config, start_step, swanlab_run, args.beta, tokenizer, base_save_path)
+            train_epoch(epoch, loader, len(loader) + skip, ref_model, lm_config, start_step, swanlab_run, args.beta, args.dpo_aggregate, tokenizer, base_save_path)
         else:
-            train_epoch(epoch, loader, len(loader), ref_model, lm_config, 0, swanlab_run, args.beta, tokenizer, base_save_path)
+            train_epoch(epoch, loader, len(loader), ref_model, lm_config, 0, swanlab_run, args.beta, args.dpo_aggregate, tokenizer, base_save_path)
     
     # ========== 12. 清理分布进程 ==========
     if dist.is_initialized(): dist.destroy_process_group()

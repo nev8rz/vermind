@@ -1,10 +1,12 @@
 
 import os
+import bisect
 import torch
 from pathlib import Path
 from torch.utils.data import Dataset
 from datasets import load_dataset
 import pandas as pd
+import pyarrow.parquet as pq
 os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -60,6 +62,7 @@ class SFTDatasetPacked(Dataset):
     """
     Packed SFT 数据集
     从预处理好的 Parquet 文件加载数据（由 scripts/pre_sftdatapacked.py 生成）
+    使用 PyArrow 流式读取，避免一次性加载整个文件到内存
     """
     def __init__(self, parquet_path: str, tokenizer=None, max_length: int = 2048):
         """
@@ -78,27 +81,48 @@ class SFTDatasetPacked(Dataset):
                 f"请先运行 scripts/pre_sftdatapacked.py 预处理数据"
             )
         
-        print(f"[SFTDatasetPacked] 加载 Parquet 文件: {parquet_path}")
-        self.df = pd.read_parquet(parquet_path)
+        print(f"[SFTDatasetPacked] 打开 Parquet 文件: {parquet_path}")
+        self.parquet_file = pq.ParquetFile(parquet_path)
         
+        schema = self.parquet_file.schema_arrow
         required_cols = ['input_ids', 'labels', 'boundaries']
-        missing_cols = [col for col in required_cols if col not in self.df.columns]
+        missing_cols = [col for col in required_cols if col not in schema.names]
         if missing_cols:
             raise ValueError(f"Parquet 文件缺少必要的列: {missing_cols}")
         
-        first_seq_len = len(self.df.iloc[0]['input_ids'])
-        if first_seq_len != max_length:
-            print(f"[SFTDatasetPacked] 警告: Parquet 中的序列长度 ({first_seq_len}) 与 max_length ({max_length}) 不匹配")
-            self.max_length = first_seq_len
+        metadata = self.parquet_file.metadata
+        self.num_rows = metadata.num_rows
         
-        print(f"[SFTDatasetPacked] 加载成功: {len(self.df):,} 个序列")
+        row_group_offsets = [0]
+        for i in range(metadata.num_row_groups):
+            row_group_offsets.append(row_group_offsets[-1] + metadata.row_group(i).num_rows)
+        self.row_group_offsets = row_group_offsets
+        
+        if self.num_rows > 0:
+            first_table = self.parquet_file.read_row_group(0, columns=required_cols)
+            first_row = first_table.to_pandas().iloc[0]
+            first_seq_len = len(first_row['input_ids'])
+            if first_seq_len != max_length:
+                print(f"[SFTDatasetPacked] 警告: Parquet 中的序列长度 ({first_seq_len}) 与 max_length ({max_length}) 不匹配")
+                self.max_length = first_seq_len
+        else:
+            self.max_length = max_length
+        
+        print(f"[SFTDatasetPacked] 文件打开成功: {self.num_rows:,} 个序列")
         print(f"[SFTDatasetPacked] 序列长度: {self.max_length}")
+        print(f"[SFTDatasetPacked] Row groups: {metadata.num_row_groups}")
     
     def __len__(self):
-        return len(self.df)
+        return self.num_rows
     
     def __getitem__(self, index):
-        row = self.df.iloc[index]
+        row_group_idx = bisect.bisect_right(self.row_group_offsets, index) - 1
+        row_in_group = index - self.row_group_offsets[row_group_idx]
+        
+        table = self.parquet_file.read_row_group(row_group_idx, columns=['input_ids', 'labels', 'boundaries'])
+        df = table.to_pandas()
+        row = df.iloc[row_in_group]
+        
         input_ids = torch.tensor(row['input_ids'], dtype=torch.long)
         labels = torch.tensor(row['labels'], dtype=torch.long)
         boundaries = row['boundaries']

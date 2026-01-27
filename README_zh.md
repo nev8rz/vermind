@@ -32,7 +32,7 @@
 
 -   🚀 **性能与效率**: 实现 GQA 和 Flash Attention，减少内存占用，加速训练和推理。
 -   🧠 **现代架构**: 融合了 LLM 架构的最新进展，如 SwiGLU 激活函数和用于长文本理解的 RoPE (旋转位置嵌入) 及 YaRN 缩放。
--   🔧 **端到端解决方案**: 提供从分词器训练、预训练到监督微调 (SFT)、LoRA 以及使用 vLLM 适配器进行部署的完整工作流。
+-   🔧 **端到端解决方案**: 提供从分词器训练、预训练到 SFT（含打包训练）、DPO 对齐、LoRA 及 vLLM 部署的完整工作流。
 -   🧩 **可扩展性与定制化**: 模块化设计使得实验新想法、更换组件和根据特定需求调整模型变得容易。
 -   🎓 **教育价值**: 凭借详细的代码和文档，成为理解现代语言模型内部工作原理的绝佳学习资源。
 
@@ -46,6 +46,8 @@
 | 🚀 **vLLM 适配器** | 支持极速推理，并提供与 OpenAI 兼容的 API 服务器，开箱即用。 |
 | 🎨 **LoRA 微调** | 支持使用低秩自适应 (LoRA) 进行参数高效微调 (PEFT)，实现快速、低内存占用的定制化。 |
 | 🌐 **分布式训练** | 内置对分布式数据并行 (DDP) 的支持，可将训练扩展到多个 GPU。 |
+| 📦 **打包式 SFT 训练** | 使用 Varlen FlashAttention 的序列打包 SFT，减少填充浪费，提升 GPU 利用率。 |
+| 🎯 **直接偏好优化 (DPO)** | 使用偏好对对齐人类偏好，无需奖励模型即可提升输出质量。 |
 
 ## 🏗️ 架构概览
 
@@ -87,7 +89,7 @@ VerMind 的架构是一个为性能和可扩展性而优化的仅解码器 Trans
 
 ## 🏃‍♀️ 使用示例
 
-VerMind 提供了一个完整的训练流程，并在 `examples/` 目录中提供了便捷的 Shell 脚本。训练工作流如下：**分词器 → 预训练 → SFT → LoRA → 部署**。
+VerMind 提供了一个完整的训练流程，并在 `examples/` 目录中提供了便捷的 Shell 脚本。训练工作流如下：**分词器 → 预训练 → SFT → DPO（可选）→ LoRA → 部署**。
 
 ### 1. 训练分词器
 
@@ -155,7 +157,32 @@ python train/lora.py \
     --lora_rank 16
 ```
 
-### 5. 合并 LoRA 权重
+### 5. 直接偏好优化 (DPO)
+
+使用偏好对 (chosen / rejected) 对齐模型与人类偏好，无需奖励模型：
+
+```bash
+# 方式一：使用启动脚本 (在 tmux 中运行，默认 --dpo_aggregate mean)
+bash examples/dpo.sh
+
+# 方式二：使用自定义参数直接运行
+python train/dpo.py \
+    --data_path /path/to/dpo_data.jsonl \
+    --save_dir ./output/dpo \
+    --tokenizer_path ./vermind_tokenizer \
+    --ref_weight ./output/sft/full_sft_768 \
+    --from_weight ./output/sft/full_sft_768 \
+    --epochs 3 \
+    --learning_rate 1e-6 \
+    --beta 0.1 \
+    --dpo_aggregate mean \
+    --batch_size 16 \
+    --max_seq_len 340
+```
+
+`--dpo_aggregate mean`（小模型默认）或 `sum` 控制序列级 log 概率聚合方式。
+
+### 6. 合并 LoRA 权重
 
 LoRA 训练后，将适配器权重合并到基础模型中：
 
@@ -165,9 +192,9 @@ python scripts/merge_lora.py \
     --lora_path ./output/lora/lora_768
 ```
 
-### 6. 模型评估
+### 7. 模型评估
 
-以交互方式或自动测试模式评估您的模型：
+以交互方式或自动测试模式评估模型：
 
 ```bash
 # 交互式聊天模式
@@ -176,7 +203,7 @@ python scripts/eval_llm.py \
     --use_chat_template 1
 ```
 
-### 7. 使用 vLLM 部署
+### 8. 使用 vLLM 部署
 
 启动与 OpenAI 客户端兼容的高性能 API 服务器：
 
@@ -187,7 +214,7 @@ python vllm_adapter/start_server.py ./output/lora/lora_768/checkpoint_merged
 # 服务器现在运行在 http://localhost:8000
 ```
 
-### 8. 发起 API 请求
+### 9. 发起 API 请求
 
 ```python
 from openai import OpenAI

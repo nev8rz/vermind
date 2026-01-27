@@ -654,10 +654,10 @@ python train/pretrain.py --data_path /path/to/data.jsonl</code>
                         <h3 data-lang="zh">微调 (SFT、DPO 或 LoRA)</h3>
                     </div>
                     <code>bash examples/sft.sh
-# Packed SFT with Varlen FlashAttention for better efficiency
+# Packed SFT with Varlen FlashAttention
 bash examples/sft_packed.sh
-# DPO for preference alignment
-python train/dpo.py --data_path /path/to/dpo_data.jsonl
+# DPO (--dpo_aggregate mean)
+bash examples/dpo.sh
 # or LoRA
 bash examples/lora.sh</code>
                 </div>

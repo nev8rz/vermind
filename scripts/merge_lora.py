@@ -9,7 +9,6 @@ import sys
 import argparse
 import torch
 import torch.nn as nn
-import glob
 
 # 添加项目路径
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))

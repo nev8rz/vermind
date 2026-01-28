@@ -56,9 +56,6 @@ class VerMindModel(nn.Module):
         freqs_cos, freqs_sin = precompute_freqs_cis(dim=config.hidden_size // config.num_attention_heads,
                                                     end=config.max_position_embeddings, rope_base=config.rope_theta,
                                                     rope_scaling=config.rope_scaling)
-        # 注册为 buffer 但不持久化，避免保存到 checkpoint 中
-        # persistent=False 意味着这些 buffer 不会出现在 state_dict 中，节省存储空间
-        # 同时配合 DDP 的 _ddp_params_and_buffers_to_ignore 使用，避免不同 GPU 上序列长度不同导致的同步问题
         self.register_buffer("freqs_cos", freqs_cos, persistent=False)
         self.register_buffer("freqs_sin", freqs_sin, persistent=False)
 
@@ -83,13 +80,7 @@ class VerMindModel(nn.Module):
         if hasattr(past_key_values, 'layers'): past_key_values = None # 兼容，可能有的框架是用的kv cache2，这里退化了，不走kv cache了
         past_key_values = past_key_values or [None] * len(self.layers) 
         start_pos = past_key_values[0][0].shape[1] if past_key_values[0] is not None else 0
-        # 已经缓存了多少个历史 token 的 KV，
 
-        # 生成 position embeddings
-        # 如果提供了 position_ids，Attention 层会使用它来正确索引
-        # 否则使用默认的绝对位置
-        # 注意：即使提供了 position_ids，我们仍然需要传递完整的 cos/sin 给 Attention
-        # 因为 Attention 层内部会根据 position_ids 来索引
         position_embeddings = (
             self.freqs_cos,  # (max_seq_len, head_dim) - 传递完整的 cos
             self.freqs_sin   # (max_seq_len, head_dim) - 传递完整的 sin
@@ -110,7 +101,6 @@ class VerMindModel(nn.Module):
 
         hidden_states = self.norm(hidden_states) # 输出归一化
 
-        # aux_loss = sum([l.mlp.aux_loss for l in self.layers if isinstance(l.mlp, MOEFeedForward)], hidden_states.new_zeros(1).squeeze())
         aux_loss = 0
         return hidden_states, presents, aux_loss
     
@@ -118,8 +108,6 @@ class VerMindModel(nn.Module):
 
 class VerMindForCausalLM(PreTrainedModel, GenerationMixin):
     config_class = VerMindConfig
-    # 共享权重：lm_head.weight 和 model.embed_tokens.weight 共享同一个权重矩阵
-    # transformers 在保存 safetensors 格式时会自动处理共享权重
 
     def __init__(self, config: VerMindConfig = None):
         self.config = config or VerMindConfig()
@@ -148,30 +136,20 @@ class VerMindForCausalLM(PreTrainedModel, GenerationMixin):
             **args
         ) # 模型输出，hidden states, kv cache, aux loss
         
-        # 检查是否是 varlen 模式
         is_varlen = cu_seqlens is not None
         if is_varlen:
-            # Varlen 模式：hidden_states 是 (total_tokens, hidden_size)
-            logits = self.lm_head(hidden_states)  # (total_tokens, vocab_size)
+            logits = self.lm_head(hidden_states)
         else:
-            # 标准模式：hidden_states 是 (batch_size, seq_length, hidden_size)
             slice_indices = slice(-logits_to_keep, None) if isinstance(logits_to_keep, int) else logits_to_keep
             logits = self.lm_head(hidden_states[:, slice_indices, :])
 
-        # slice_indices 是用于切片，只保留最后 logits_to_keep 个 token 的 logits
-        # lm_head 是用于将 hidden states 映射到 logits[B,T,V],同样只保留最后 logits_to_keep 个 token 的 logits
-
-        # 计算损失
         loss = None
         if labels is not None:
             if is_varlen:
-                # Varlen 模式：logits 和 labels 都是 (total_tokens,)
-                # 直接计算损失，不需要 shift（因为每个样本内部已经是 causal）
                 shift_logits = logits[:-1, :].contiguous()  # (total_tokens-1, vocab_size)
                 shift_labels = labels[1:].contiguous()  # (total_tokens-1,)
                 loss = F.cross_entropy(shift_logits, shift_labels, ignore_index=-100)
             else:
-                # 标准模式：在这里进行shift，将 logits 和 labels 都向右移动一位，然后计算损失
                 shift_logits = logits[..., :-1, :].contiguous()
                 shift_labels = labels[..., 1:].contiguous()
                 loss = F.cross_entropy(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1), ignore_index=-100) # 交叉熵损失

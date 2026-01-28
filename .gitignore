@@ -15,6 +15,7 @@ AGENTS.md
 .github
 .opencode
 .windsurf
+studio.py
 
 
 # C extensions
@@ -196,6 +197,7 @@ uv.lock
 
 # Model weights and training outputs
 weights/
+!vermind_models/models/*.py
 models/
 *.bin
 

@@ -114,7 +114,7 @@ class VerMindModel(nn.Module):
         aux_loss = 0
         return hidden_states, presents, aux_loss
     
-    
+
 
 class VerMindForCausalLM(PreTrainedModel, GenerationMixin):
     config_class = VerMindConfig

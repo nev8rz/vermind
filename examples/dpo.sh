@@ -12,12 +12,12 @@ uv run python train/dpo.py \
     --ref_weight /root/vermind/output/sft/full_sft_768 \
     --from_weight /root/vermind/output/sft/full_sft_768 \
     --epochs 3 \
-    --batch_size 16 \
+    --batch_size 32 \
     --learning_rate 1e-6 \
     --warmup_ratio 0.03 \
     --num_workers 6 \
     --accumulation_steps 1 \
-    --max_seq_len 340 \
+    --max_seq_len 512 \
     --save_interval 1000 \
     --beta 0.1 \
     --dpo_aggregate mean \

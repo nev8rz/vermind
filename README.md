@@ -74,12 +74,12 @@ VerMind has been evaluated on Chinese language understanding benchmarks:
 
 | Benchmark | Version | Metric | Score |
 |-----------|---------|--------|-------|
-| ACLUE | v1 | acc | **25.67%** ± 0.62% |
-| CEval-Valid | v2 | acc | **23.85%** ± 1.17% |
-| CMMLU | v1 | acc | **24.79%** ± 0.40% |
-| TMMLUPlus | v2 | acc | **25.15%** ± 0.22% |
+| ACLUE | v1 | acc | **25.41%** ± 0.62% |
+| CEval-Valid | v2 | acc | **23.55%** ± 1.16% |
+| CMMLU | v1 | acc | **25.19%** ± 0.40% |
+| TMMLUPlus | v2 | acc | **25.33%** ± 0.22% |
 
-*Evaluation conducted on Base model (768 hidden size)*
+*Evaluation conducted on DPO-aligned model (768 hidden size)*
 
 ## 🚀 Getting Started
 

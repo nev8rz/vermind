@@ -419,6 +419,47 @@
             color: var(--text-secondary);
         }
         
+        /* Models Table Section */
+        .models {
+            padding: 100px 0;
+            background: linear-gradient(180deg, transparent 0%, rgba(30, 41, 59, 0.5) 50%, transparent 100%);
+        }
+        
+        .models-table {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        
+        .models-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .models-table th,
+        .models-table td {
+            padding: 16px 24px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .models-table th {
+            background: rgba(99, 102, 241, 0.1);
+            font-weight: 600;
+            color: var(--primary);
+        }
+        
+        .models-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .models-table td {
+            color: var(--text-secondary);
+        }
+        
         /* Footer */
         footer {
             padding: 60px 0;
@@ -477,6 +518,7 @@
             <ul class="nav-links">
                 <li><a href="#features" data-lang="en">Features</a><a href="#features" data-lang="zh">功能</a></li>
                 <li><a href="#architecture" data-lang="en">Architecture</a><a href="#architecture" data-lang="zh">架构</a></li>
+                <li><a href="#evaluation" data-lang="en">Evaluation</a><a href="#evaluation" data-lang="zh">评估</a></li>
                 <li><a href="#quickstart" data-lang="en">Quick Start</a><a href="#quickstart" data-lang="zh">快速开始</a></li>
                 <li><a href="#models" data-lang="en">Models</a><a href="#models" data-lang="zh">模型</a></li>
                 <li>
@@ -616,6 +658,59 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </section>
+
+    <section style="padding: 100px 0; background: linear-gradient(180deg, transparent 0%, rgba(30, 41, 59, 0.5) 50%, transparent 100%);" id="evaluation">
+        <div class="container">
+            <h2 class="section-title" data-lang="en">Evaluation Results</h2>
+            <h2 class="section-title" data-lang="zh">评估结果</h2>
+            <p class="section-subtitle" data-lang="en">Chinese language understanding benchmark performance</p>
+            <p class="section-subtitle" data-lang="zh">中文语言理解基准测试表现</p>
+            <div class="models-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th data-lang="en">Benchmark</th>
+                            <th data-lang="zh">基准测试</th>
+                            <th data-lang="en">Version</th>
+                            <th data-lang="zh">版本</th>
+                            <th data-lang="en">Metric</th>
+                            <th data-lang="zh">指标</th>
+                            <th data-lang="en">Score</th>
+                            <th data-lang="zh">分数</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>ACLUE</td>
+                            <td>v1</td>
+                            <td>acc</td>
+                            <td><span style="color: var(--secondary); font-weight: 600;">25.67%</span> <span style="color: var(--text-secondary); font-size: 0.85rem;">± 0.62%</span></td>
+                        </tr>
+                        <tr>
+                            <td>CEval-Valid</td>
+                            <td>v2</td>
+                            <td>acc</td>
+                            <td><span style="color: var(--secondary); font-weight: 600;">23.85%</span> <span style="color: var(--text-secondary); font-size: 0.85rem;">± 1.17%</span></td>
+                        </tr>
+                        <tr>
+                            <td>CMMLU</td>
+                            <td>v1</td>
+                            <td>acc</td>
+                            <td><span style="color: var(--secondary); font-weight: 600;">24.79%</span> <span style="color: var(--text-secondary); font-size: 0.85rem;">± 0.40%</span></td>
+                        </tr>
+                        <tr>
+                            <td>TMMLUPlus</td>
+                            <td>v2</td>
+                            <td>acc</td>
+                            <td><span style="color: var(--secondary); font-weight: 600;">25.15%</span> <span style="color: var(--text-secondary); font-size: 0.85rem;">± 0.22%</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p style="text-align: center; margin-top: 24px; color: var(--text-secondary); font-size: 0.9rem;" data-lang="en">Evaluated on Base model (768 hidden size)</p>
+            <p style="text-align: center; margin-top: 24px; color: var(--text-secondary); font-size: 0.9rem;" data-lang="zh">在 Base 模型（768 隐藏层大小）上进行评估</p>
         </div>
     </section>
 

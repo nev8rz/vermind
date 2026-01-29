@@ -248,12 +248,14 @@ if model_path is None:
 sys.argv = [
     "vllm",
     "serve",
-    model_path,
-    "--gpu-memory-utilization", "0.1",
-    "--trust-remote-code",
+    model_path,  # 使用模型路径
+    "--gpu-memory-utilization", "0.5",
+    "--trust-remote-code",  # 允许信任远程代码
     "--port", "8000",
     "--host", "0.0.0.0",
-    "--served-model-name", "vermind",
+    "--served-model-name", "vermind",  # 设定服务的模型名称
+    "--max-model-len", "3072",  
+    "--tokenizer", model_path  # 使用与模型路径相同目录的 tokenizer
 ]
 
 # Import and run vLLM's main entry point

@@ -16,7 +16,7 @@ AGENTS.md
 .opencode
 .windsurf
 studio.py
-
+internlm2-1_8b-reward
 
 # C extensions
 *.so

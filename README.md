@@ -68,6 +68,19 @@ VerMind's architecture is a decoder-only transformer optimized for performance a
 -   **Grouped Query Attention (GQA)**: The attention block where multiple query heads attend to a single key-value head.
 -   **SwiGLU Feed-Forward Network**: The FFN block uses the SwiGLU activation for better performance.
 
+## 📊 Evaluation Results
+
+VerMind has been evaluated on Chinese language understanding benchmarks:
+
+| Benchmark | Version | Metric | Score |
+|-----------|---------|--------|-------|
+| ACLUE | v1 | acc | **25.67%** ± 0.62% |
+| CEval-Valid | v2 | acc | **23.85%** ± 1.17% |
+| CMMLU | v1 | acc | **24.79%** ± 0.40% |
+| TMMLUPlus | v2 | acc | **25.15%** ± 0.22% |
+
+*Evaluation conducted on Base model (768 hidden size)*
+
 ## 🚀 Getting Started
 
 Get your local copy up and running in a few simple steps.

@@ -112,7 +112,8 @@ def train_epoch(epoch, loader, iters, ref_model, lm_config, start_step=0, swanla
             spend_time = time.time() - start_time
             current_loss = loss.item() * args.accumulation_steps
             current_dpo_loss = dpo_loss_val.item()
-            current_aux_loss = outputs.aux_loss.item()
+            # current_aux_loss = outputs.aux_loss.item()
+            current_aux_loss = 0
             cr_val = chosen_rewards.item()
             rr_val = rejected_rewards.item()
             current_lr = optimizer.param_groups[-1]['lr']
@@ -156,7 +157,7 @@ def train_epoch(epoch, loader, iters, ref_model, lm_config, start_step=0, swanla
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="VerMind DPO Training")
-    parser.add_argument("--save_dir", type=str, default="../out", help="模型保存目录")
+    parser.add_argument("--save_dir", type=str, default="./output/dpo", help="模型保存目录")
     parser.add_argument('--save_weight', default='dpo', type=str, help="保存权重的前缀名")
     parser.add_argument("--epochs", type=int, default=3, help="训练轮数")
     parser.add_argument("--batch_size", type=int, default=16, help="batch size")

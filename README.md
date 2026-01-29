@@ -72,14 +72,14 @@ VerMind's architecture is a decoder-only transformer optimized for performance a
 
 VerMind has been evaluated on Chinese language understanding benchmarks:
 
-| Benchmark | Version | Metric | Score |
-|-----------|---------|--------|-------|
-| ACLUE | v1 | acc | **25.41%** ± 0.62% |
-| CEval-Valid | v2 | acc | **23.55%** ± 1.16% |
-| CMMLU | v1 | acc | **25.19%** ± 0.40% |
-| TMMLUPlus | v2 | acc | **25.33%** ± 0.22% |
+| Benchmark (Version) | SFT | DPO |
+|---------------------|-----|-----|
+| ACLUE (v1) | 25.67% ± 0.62% | **25.41%** ± 0.62% |
+| CEval-Valid (v2) | 23.85% ± 1.17% | **23.55%** ± 1.16% |
+| CMMLU (v1) | 24.79% ± 0.40% | **25.19%** ± 0.40% |
+| TMMLUPlus (v2) | 25.15% ± 0.22% | **25.33%** ± 0.22% |
 
-*Evaluation conducted on DPO-aligned model (768 hidden size)*
+*Evaluated on model with 768 hidden size*
 
 ## 🚀 Getting Started
 

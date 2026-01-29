@@ -28,6 +28,10 @@
             box-sizing: border-box;
         }
         
+        html {
+            scroll-behavior: smooth;
+        }
+        
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg-dark);
@@ -71,7 +75,7 @@
         
         .nav-links {
             display: flex;
-            gap: 32px;
+            gap: 28px;
             list-style: none;
             align-items: center;
         }
@@ -80,6 +84,7 @@
             color: var(--text-secondary);
             text-decoration: none;
             font-weight: 500;
+            font-size: 0.95rem;
             transition: color 0.2s;
         }
         
@@ -89,7 +94,7 @@
         
         .lang-switch {
             display: flex;
-            gap: 8px;
+            gap: 4px;
             padding: 4px;
             background: var(--bg-card);
             border-radius: 8px;
@@ -128,11 +133,21 @@
             color: var(--text-primary);
             text-decoration: none;
             font-weight: 500;
+            font-size: 0.95rem;
             transition: all 0.2s;
         }
         
         .github-btn:hover {
             background: var(--border);
+        }
+        
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 8px;
         }
         
         /* Hero Section */
@@ -231,7 +246,7 @@
         
         .features-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 24px;
         }
         
@@ -262,13 +277,14 @@
         }
         
         .feature-card h3 {
-            font-size: 1.25rem;
+            font-size: 1.2rem;
             margin-bottom: 12px;
         }
         
         .feature-card p {
             color: var(--text-secondary);
             font-size: 0.95rem;
+            line-height: 1.6;
         }
         
         /* Architecture Section */
@@ -301,10 +317,10 @@
         
         .arch-details {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 24px;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
             text-align: left;
-            max-width: 1000px;
+            max-width: 900px;
             margin: 0 auto;
         }
         
@@ -326,6 +342,60 @@
             font-size: 0.9rem;
         }
         
+        /* Evaluation Section */
+        .evaluation {
+            padding: 100px 0;
+            background: linear-gradient(180deg, transparent 0%, rgba(30, 41, 59, 0.5) 50%, transparent 100%);
+        }
+        
+        .models-table {
+            max-width: 700px;
+            margin: 0 auto;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        
+        .models-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .models-table th,
+        .models-table td {
+            padding: 16px 20px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .models-table th {
+            background: rgba(99, 102, 241, 0.1);
+            font-weight: 600;
+            color: var(--primary);
+            font-size: 0.95rem;
+        }
+        
+        .models-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .models-table td {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+        
+        .models-table td strong {
+            color: var(--secondary);
+        }
+        
+        .eval-note {
+            text-align: center;
+            margin-top: 24px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
         /* Quick Start Section */
         .quickstart {
             padding: 100px 0;
@@ -333,7 +403,7 @@
         
         .quickstart-steps {
             display: grid;
-            gap: 24px;
+            gap: 20px;
             max-width: 800px;
             margin: 0 auto;
         }
@@ -362,6 +432,7 @@
             justify-content: center;
             font-weight: 600;
             font-size: 0.9rem;
+            flex-shrink: 0;
         }
         
         .step h3 {
@@ -376,16 +447,18 @@
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.85rem;
             overflow-x: auto;
+            color: var(--text-primary);
+            line-height: 1.5;
         }
         
-        /* Model Sizes Section */
+        /* Model Specs Section */
         .models {
             padding: 100px 0;
             background: linear-gradient(180deg, transparent 0%, rgba(30, 41, 59, 0.5) 50%, transparent 100%);
         }
         
-        .models-table {
-            max-width: 800px;
+        .specs-table {
+            max-width: 900px;
             margin: 0 auto;
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -393,71 +466,37 @@
             overflow: hidden;
         }
         
-        .models-table table {
+        .specs-table table {
             width: 100%;
             border-collapse: collapse;
         }
         
-        .models-table th,
-        .models-table td {
-            padding: 16px 24px;
+        .specs-table th,
+        .specs-table td {
+            padding: 16px 20px;
             text-align: left;
             border-bottom: 1px solid var(--border);
         }
         
-        .models-table th {
+        .specs-table th {
             background: rgba(99, 102, 241, 0.1);
             font-weight: 600;
             color: var(--primary);
+            font-size: 0.95rem;
         }
         
-        .models-table tr:last-child td {
+        .specs-table tr:last-child td {
             border-bottom: none;
         }
         
-        .models-table td {
+        .specs-table td {
             color: var(--text-secondary);
+            font-size: 0.95rem;
         }
         
-        /* Models Table Section */
-        .models {
-            padding: 100px 0;
-            background: linear-gradient(180deg, transparent 0%, rgba(30, 41, 59, 0.5) 50%, transparent 100%);
-        }
-        
-        .models-table {
-            max-width: 800px;
-            margin: 0 auto;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            overflow: hidden;
-        }
-        
-        .models-table table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        .models-table th,
-        .models-table td {
-            padding: 16px 24px;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-        }
-        
-        .models-table th {
-            background: rgba(99, 102, 241, 0.1);
+        .specs-table td:first-child {
+            color: var(--text-primary);
             font-weight: 600;
-            color: var(--primary);
-        }
-        
-        .models-table tr:last-child td {
-            border-bottom: none;
-        }
-        
-        .models-table td {
-            color: var(--text-secondary);
         }
         
         /* Footer */
@@ -497,16 +536,81 @@
         
         /* Responsive */
         @media (max-width: 768px) {
+            .hero {
+                padding: 120px 0 80px;
+            }
+            
             .hero h1 {
                 font-size: 2.5rem;
             }
             
+            .hero .subtitle {
+                font-size: 1.1rem;
+            }
+            
+            .section-title {
+                font-size: 2rem;
+            }
+            
             .nav-links {
                 display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: var(--bg-card);
+                flex-direction: column;
+                padding: 20px;
+                gap: 16px;
+                border-bottom: 1px solid var(--border);
+            }
+            
+            .nav-links.active {
+                display: flex;
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+            }
+            
+            .features-grid {
+                grid-template-columns: 1fr;
             }
             
             .arch-details {
                 grid-template-columns: 1fr;
+            }
+            
+            .models-table,
+            .specs-table {
+                overflow-x: auto;
+            }
+            
+            .models-table table,
+            .specs-table table {
+                min-width: 500px;
+            }
+            
+            .btn {
+                padding: 12px 20px;
+                font-size: 0.95rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+            
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 280px;
+                justify-content: center;
             }
         }
     </style>
@@ -515,7 +619,14 @@
     <nav>
         <div class="container">
             <div class="logo">VerMind</div>
-            <ul class="nav-links">
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+            <ul class="nav-links" id="navLinks">
                 <li><a href="#features" data-lang="en">Features</a><a href="#features" data-lang="zh">功能</a></li>
                 <li><a href="#architecture" data-lang="en">Architecture</a><a href="#architecture" data-lang="zh">架构</a></li>
                 <li><a href="#evaluation" data-lang="en">Evaluation</a><a href="#evaluation" data-lang="zh">评估</a></li>
@@ -567,59 +678,66 @@
             <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-icon">⚡</div>
-                    <h3 data-lang="en">GQA (Grouped Query Attention)</h3>
+                    <h3 data-lang="en">Grouped Query Attention</h3>
                     <h3 data-lang="zh">分组查询注意力 (GQA)</h3>
-                    <p data-lang="en">Efficient attention mechanism with grouped query and key-value heads for faster inference and reduced memory usage.</p>
-                    <p data-lang="zh">高效的注意力机制，通过分组查询和键值头实现更快的推理和更低的内存占用。</p>
+                    <p data-lang="en">Efficient attention with grouped query heads for faster inference and reduced memory usage.</p>
+                    <p data-lang="zh">通过分组查询头实现高效注意力，加速推理并降低内存占用。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🔥</div>
                     <h3 data-lang="en">SwiGLU Activation</h3>
                     <h3 data-lang="zh">SwiGLU 激活函数</h3>
-                    <p data-lang="en">Swish-Gated Linear Unit activation function for improved model performance and training stability.</p>
-                    <p data-lang="zh">Swish 门控线性单元激活函数，提升模型性能和训练稳定性。</p>
+                    <p data-lang="en">Swish-Gated Linear Unit for improved model performance and training stability.</p>
+                    <p data-lang="zh">Swish 门控线性单元，提升模型性能和训练稳定性。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">📐</div>
-                    <h3 data-lang="en">RoPE with YaRN Scaling</h3>
-                    <h3 data-lang="zh">RoPE + YaRN 缩放</h3>
-                    <p data-lang="en">Rotary Position Embedding with extended context support up to 32K tokens.</p>
-                    <p data-lang="zh">旋转位置嵌入，支持高达 32K tokens 的扩展上下文。</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🤗</div>
-                    <h3 data-lang="en">HuggingFace Integration</h3>
-                    <h3 data-lang="zh">HuggingFace 集成</h3>
-                    <p data-lang="en">Fully compatible with the Transformers library for easy model loading and deployment.</p>
-                    <p data-lang="zh">完全兼容 Transformers 库，轻松加载和部署模型。</p>
+                    <h3 data-lang="en">RoPE with YaRN</h3>
+                    <h3 data-lang="zh">RoPE + YaRN 扩展</h3>
+                    <p data-lang="en">Rotary Position Embedding with context extension support up to 32K tokens.</p>
+                    <p data-lang="zh">旋转位置嵌入，支持高达 32K tokens 的上下文扩展。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🚀</div>
                     <h3 data-lang="en">vLLM Adapter</h3>
                     <h3 data-lang="zh">vLLM 适配器</h3>
-                    <p data-lang="en">High-performance inference with OpenAI-compatible API for production deployment.</p>
-                    <p data-lang="zh">高性能推理，提供与 OpenAI 兼容的 API，适用于生产部署。</p>
+                    <p data-lang="en">High-performance inference with OpenAI-compatible API for production.</p>
+                    <p data-lang="zh">高性能推理，提供 OpenAI 兼容 API，适用于生产环境。</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">🔧</div>
+                    <div class="feature-icon">🎨</div>
                     <h3 data-lang="en">LoRA Fine-Tuning</h3>
                     <h3 data-lang="zh">LoRA 微调</h3>
-                    <p data-lang="en">Parameter-efficient fine-tuning with LoRA adapters, training only 0.1-1% of parameters.</p>
-                    <p data-lang="zh">使用 LoRA 适配器进行参数高效微调，仅训练 0.1-1% 的参数。</p>
+                    <p data-lang="en">Parameter-efficient fine-tuning, training only 0.1-1% of parameters.</p>
+                    <p data-lang="zh">参数高效微调，仅训练 0.1-1% 的参数。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🌐</div>
+                    <h3 data-lang="en">Distributed Training</h3>
+                    <h3 data-lang="zh">分布式训练</h3>
+                    <p data-lang="en">Built-in DDP support to scale training across multiple GPUs.</p>
+                    <p data-lang="zh">内置 DDP 支持，跨多 GPU 扩展训练。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">📦</div>
                     <h3 data-lang="en">Packed SFT Training</h3>
                     <h3 data-lang="zh">打包式 SFT 训练</h3>
-                    <p data-lang="en">Efficient sequence packing for SFT training with Varlen FlashAttention, reducing padding waste and improving GPU utilization.</p>
-                    <p data-lang="zh">使用 Varlen FlashAttention 的高效序列打包 SFT 训练，减少填充浪费，提升 GPU 利用率。</p>
+                    <p data-lang="en">Efficient sequence packing with Varlen FlashAttention, reducing padding waste.</p>
+                    <p data-lang="zh">使用 Varlen FlashAttention 的高效序列打包，减少填充浪费。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🎯</div>
-                    <h3 data-lang="en">Direct Preference Optimization (DPO)</h3>
+                    <h3 data-lang="en">Direct Preference Optimization</h3>
                     <h3 data-lang="zh">直接偏好优化 (DPO)</h3>
-                    <p data-lang="en">Align models with human preferences using preference pairs, improving output quality without a reward model.</p>
-                    <p data-lang="zh">使用偏好对来对齐模型与人类偏好，无需奖励模型即可提升输出质量。</p>
+                    <p data-lang="en">Align models with human preferences without a reward model.</p>
+                    <p data-lang="zh">无需奖励模型即可对齐人类偏好。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎮</div>
+                    <h3 data-lang="en">Proximal Policy Optimization</h3>
+                    <h3 data-lang="zh">近端策略优化 (PPO)</h3>
+                    <p data-lang="en">RLHF training with reward models for enhanced reasoning.</p>
+                    <p data-lang="zh">使用奖励模型进行 RLHF 训练，增强推理能力。</p>
                 </div>
             </div>
         </div>
@@ -630,8 +748,8 @@
             <div class="arch-content">
                 <h2 data-lang="en">Modern Architecture</h2>
                 <h2 data-lang="zh">现代架构</h2>
-                <p data-lang="en">VerMind implements state-of-the-art transformer architecture with optimizations for both training efficiency and inference speed.</p>
-                <p data-lang="zh">VerMind 实现了最先进的 Transformer 架构，针对训练效率和推理速度进行了优化。</p>
+                <p data-lang="en">State-of-the-art transformer architecture optimized for training efficiency and inference speed.</p>
+                <p data-lang="zh">针对训练效率和推理速度优化的最先进 Transformer 架构。</p>
                 
                 <img src="https://raw.githubusercontent.com/nev8rz/vermind/main/docs/assets/architecture.png" alt="VerMind Architecture" class="arch-image">
                 
@@ -639,7 +757,7 @@
                     <div class="arch-detail-item">
                         <h4>RMSNorm</h4>
                         <p data-lang="en">Root Mean Square Layer Normalization for stable training</p>
-                        <p data-lang="zh">均方根层归一化，确保训练稳定性</p>
+                        <p data-lang="zh">均方根层归一化，确保训练稳定</p>
                     </div>
                     <div class="arch-detail-item">
                         <h4>RoPE</h4>
@@ -661,7 +779,7 @@
         </div>
     </section>
 
-    <section style="padding: 100px 0; background: linear-gradient(180deg, transparent 0%, rgba(30, 41, 59, 0.5) 50%, transparent 100%);" id="evaluation">
+    <section class="evaluation" id="evaluation">
         <div class="container">
             <h2 class="section-title" data-lang="en">Evaluation Results</h2>
             <h2 class="section-title" data-lang="zh">评估结果</h2>
@@ -671,40 +789,42 @@
                 <table>
                     <thead>
                         <tr>
-                            <th data-lang="en">Benchmark (Version)</th>
-                            <th data-lang="zh">基准测试 (版本)</th>
-                            <th data-lang="en">SFT</th>
-                            <th data-lang="zh">SFT</th>
-                            <th data-lang="en">DPO</th>
-                            <th data-lang="zh">DPO</th>
+                            <th>Benchmark</th>
+                            <th>Version</th>
+                            <th>SFT</th>
+                            <th>DPO</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td>ACLUE (v1)</td>
-                            <td><span style="color: var(--text-secondary); font-size: 0.85rem;">25.67%</span> <span style="color: var(--text-secondary); font-size: 0.85rem;">± 0.62%</span></td>
-                            <td><span style="color: var(--secondary); font-weight: 600;">25.41%</span> <span style="color: var(--text-secondary); font-size: 0.85rem;">± 0.62%</span></td>
+                            <td>ACLUE</td>
+                            <td>v1</td>
+                            <td>25.67% ± 0.62%</td>
+                            <td><strong>25.41%</strong> ± 0.62%</td>
                         </tr>
                         <tr>
-                            <td>CEval-Valid (v2)</td>
-                            <td><span style="color: var(--text-secondary); font-size: 0.85rem;">23.85%</span> <span style="color: var(--text-secondary); font-size: 0.85rem;">± 1.17%</span></td>
-                            <td><span style="color: var(--secondary); font-weight: 600;">23.55%</span> <span style="color: var(--text-secondary); font-size: 0.85rem;">± 1.16%</span></td>
+                            <td>CEval-Valid</td>
+                            <td>v2</td>
+                            <td>23.85% ± 1.17%</td>
+                            <td><strong>23.55%</strong> ± 1.16%</td>
                         </tr>
                         <tr>
-                            <td>CMMLU (v1)</td>
-                            <td><span style="color: var(--text-secondary); font-size: 0.85rem;">24.79%</span> <span style="color: var(--text-secondary); font-size: 0.85rem;">± 0.40%</span></td>
-                            <td><span style="color: var(--secondary); font-weight: 600;">25.19%</span> <span style="color: var(--text-secondary); font-size: 0.85rem;">± 0.40%</span></td>
+                            <td>CMMLU</td>
+                            <td>v1</td>
+                            <td>24.79% ± 0.40%</td>
+                            <td><strong>25.19%</strong> ± 0.40%</td>
                         </tr>
                         <tr>
-                            <td>TMMLUPlus (v2)</td>
-                            <td><span style="color: var(--text-secondary); font-size: 0.85rem;">25.15%</span> <span style="color: var(--text-secondary); font-size: 0.85rem;">± 0.22%</span></td>
-                            <td><span style="color: var(--secondary); font-weight: 600;">25.33%</span> <span style="color: var(--text-secondary); font-size: 0.85rem;">± 0.22%</span></td>
+                            <td>TMMLUPlus</td>
+                            <td>v2</td>
+                            <td>25.15% ± 0.22%</td>
+                            <td><strong>25.33%</strong> ± 0.22%</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
-            <p style="text-align: center; margin-top: 24px; color: var(--text-secondary); font-size: 0.9rem;" data-lang="en">Evaluated on model with 768 hidden size</p>
-            <p style="text-align: center; margin-top: 24px; color: var(--text-secondary); font-size: 0.9rem;" data-lang="zh">在 768 隐藏层大小模型上进行评估</p>
+            <p class="eval-note" data-lang="en">Evaluated on 768 hidden size model. Higher is better.</p>
+            <p class="eval-note" data-lang="zh">在 768 隐藏层大小模型上评估。数值越高越好。</p>
         </div>
     </section>
 
@@ -739,16 +859,14 @@ python train/pretrain.py --data_path /path/to/data.jsonl</code>
                 <div class="step">
                     <div class="step-header">
                         <div class="step-number">3</div>
-                        <h3 data-lang="en">Fine-Tuning (SFT, DPO, or LoRA)</h3>
-                        <h3 data-lang="zh">微调 (SFT、DPO 或 LoRA)</h3>
+                        <h3 data-lang="en">Fine-Tuning (SFT, DPO, PPO, or LoRA)</h3>
+                        <h3 data-lang="zh">微调 (SFT、DPO、PPO 或 LoRA)</h3>
                     </div>
                     <code>bash examples/sft.sh
-# Packed SFT with Varlen FlashAttention
-bash examples/sft_packed.sh
-# DPO (--dpo_aggregate mean)
-bash examples/dpo.sh
-# or LoRA
-bash examples/lora.sh</code>
+bash examples/sft_packed.sh  # Packed SFT
+bash examples/dpo.sh         # DPO alignment
+bash examples/ppo.sh         # PPO with reward model
+bash examples/lora.sh        # LoRA fine-tuning</code>
                 </div>
                 <div class="step">
                     <div class="step-header">
@@ -757,7 +875,7 @@ bash examples/lora.sh</code>
                         <h3 data-lang="zh">使用 vLLM 部署</h3>
                     </div>
                     <code>python vllm_adapter/start_server.py /path/to/checkpoint
-# Server starts at http://localhost:8000</code>
+# Server: http://localhost:8000</code>
                 </div>
             </div>
         </div>
@@ -765,32 +883,32 @@ bash examples/lora.sh</code>
 
     <section class="models" id="models">
         <div class="container">
-            <h2 class="section-title" data-lang="en">Model Sizes</h2>
+            <h2 class="section-title" data-lang="en">Model Specifications</h2>
             <h2 class="section-title" data-lang="zh">模型规格</h2>
-            <p class="section-subtitle" data-lang="en">Choose the right size for your needs</p>
-            <p class="section-subtitle" data-lang="zh">根据需求选择合适的规格</p>
-            <div class="models-table">
+            <p class="section-subtitle" data-lang="en">Choose the right configuration for your needs</p>
+            <p class="section-subtitle" data-lang="zh">根据需求选择合适的配置</p>
+            <div class="specs-table">
                 <table>
                     <thead>
                         <tr>
-                            <th data-lang="en">Model</th>
-                            <th data-lang="zh">模型</th>
-                            <th data-lang="en">Parameters</th>
-                            <th data-lang="zh">参数量</th>
+                            <th>Model</th>
+                            <th>Parameters</th>
                             <th>Hidden Size</th>
                             <th>Layers</th>
                             <th>Attention Heads</th>
                             <th>KV Heads</th>
+                            <th>Context Length</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td><strong>Base</strong></td>
+                            <td>VerMind-Base</td>
                             <td>~104M</td>
                             <td>768</td>
                             <td>16</td>
                             <td>8</td>
                             <td>2</td>
+                            <td>2K / 32K (YaRN)</td>
                         </tr>
                     </tbody>
                 </table>
@@ -800,8 +918,8 @@ bash examples/lora.sh</code>
 
     <footer>
         <div class="container">
-            <p data-lang="en">VerMind is open source and released under the MIT License.</p>
-            <p data-lang="zh">VerMind 是开源项目，基于 MIT 许可证发布。</p>
+            <p data-lang="en">VerMind is open source under the MIT License.</p>
+            <p data-lang="zh">VerMind 基于 MIT 许可证开源。</p>
             <div class="links">
                 <a href="https://github.com/nev8rz/vermind" target="_blank">GitHub</a>
                 <a href="https://github.com/nev8rz/vermind/issues" target="_blank">Issues</a>
@@ -823,6 +941,19 @@ bash examples/lora.sh</code>
                 } else {
                     document.body.classList.remove('zh');
                 }
+            });
+        });
+
+        // Mobile menu toggle
+        function toggleMobileMenu() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('active');
+        }
+
+        // Close mobile menu when clicking on a link
+        document.querySelectorAll('.nav-links a').forEach(link => {
+            link.addEventListener('click', () => {
+                document.getElementById('navLinks').classList.remove('active');
             });
         });
     </script>

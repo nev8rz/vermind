@@ -54,6 +54,7 @@
 | 🌐 **Distributed Training**           | Built-in support for Distributed Data Parallel (DDP) to scale training across multiple GPUs.                                             |
 | 📦 **Packed SFT Training**            | Efficient sequence packing for SFT training with Varlen FlashAttention, reducing padding waste and improving GPU utilization by packing multiple sequences into batches. |
 | 🎯 **Direct Preference Optimization (DPO)** | Align models with human preferences using preference pairs, improving output quality without requiring a separate reward model. |
+| 🎮 **Proximal Policy Optimization (PPO)** | Advanced RLHF training with reward models for enhanced reasoning capabilities and response quality. |
 
 ## 🏗️ Architecture Overview
 
@@ -70,16 +71,16 @@ VerMind's architecture is a decoder-only transformer optimized for performance a
 
 ## 📊 Evaluation Results
 
-VerMind has been evaluated on Chinese language understanding benchmarks:
+VerMind has been evaluated on Chinese language understanding benchmarks (768 hidden size model):
 
-| Benchmark (Version) | SFT | DPO |
-|---------------------|-----|-----|
-| ACLUE (v1) | 25.67% ± 0.62% | **25.41%** ± 0.62% |
-| CEval-Valid (v2) | 23.85% ± 1.17% | **23.55%** ± 1.16% |
-| CMMLU (v1) | 24.79% ± 0.40% | **25.19%** ± 0.40% |
-| TMMLUPlus (v2) | 25.15% ± 0.22% | **25.33%** ± 0.22% |
+| Benchmark | Version | SFT | DPO |
+|-----------|---------|-----|-----|
+| ACLUE | v1 | 25.67% ± 0.62% | **25.41%** ± 0.62% |
+| CEval-Valid | v2 | 23.85% ± 1.17% | **23.55%** ± 1.16% |
+| CMMLU | v1 | 24.79% ± 0.40% | **25.19%** ± 0.40% |
+| TMMLUPlus | v2 | 25.15% ± 0.22% | **25.33%** ± 0.22% |
 
-*Evaluated on model with 768 hidden size*
+*Higher is better. Best results in bold.*
 
 ## 🚀 Getting Started
 
@@ -108,7 +109,7 @@ uv pip install -e .
 
 ## 🏃‍♀️ Usage Examples
 
-VerMind provides a complete training pipeline with convenient shell scripts located in `examples/`. The training workflow follows: **Tokenizer → Pre-training → SFT → DPO (optional) → LoRA → Deployment**.
+VerMind provides a complete training pipeline with convenient shell scripts located in `examples/`. The training workflow follows: **Tokenizer → Pre-training → SFT → DPO/PPO (optional) → LoRA → Deployment**.
 
 ### 1. Train Tokenizer
 
@@ -235,7 +236,44 @@ python train/dpo.py \
 
 DPO training uses preference pairs (chosen vs rejected responses) to optimize the model's output quality without requiring a separate reward model. Use `--dpo_aggregate mean` (default for small models) or `sum` for sequence-level log-prob aggregation.
 
-### 6. Merge LoRA Weights
+### 6. Proximal Policy Optimization (PPO)
+
+For advanced RLHF training using PPO with a reward model to further improve model performance:
+
+```bash
+# Option 1: Use the launch script (runs in tmux)
+bash examples/ppo.sh
+
+# Option 2: Run directly with custom parameters
+python train/ppo.py \
+    --data_path /path/to/rlaif_data.jsonl \
+    --save_dir ./output/ppo \
+    --tokenizer_path ./vermind_tokenizer \
+    --from_weight ./output/sft/full_sft_768 \
+    --ref_weight ./output/sft/full_sft_768 \
+    --reward_model_path /path/to/reward_model \
+    --epochs 3 \
+    --learning_rate 1e-6 \
+    --batch_size 8 \
+    --max_seq_len 512 \
+    --max_gen_len 1536 \
+    --clip_epsilon 0.2 \
+    --kl_coef 0.01
+```
+
+**PPO Key Parameters:**
+
+- `--reward_model_path`: Path to the reward model for computing rewards
+- `--clip_epsilon`: PPO clipping parameter (default: 0.2)
+- `--kl_coef`: KL divergence penalty coefficient (default: 0.01)
+- `--vf_coef`: Value function loss coefficient (default: 0.5)
+- `--critic_lr_ratio`: Critic learning rate ratio to actor (default: 1.0)
+- `--update_old_actor_freq`: Frequency to update the old actor (default: 10 steps)
+- `--reasoning`: Set to 1 to enable reasoning mode with format rewards
+
+PPO training uses a reward model to guide the policy optimization, making it suitable for complex alignment tasks. The training involves an actor-critic architecture with KL penalty to prevent the model from deviating too far from the reference policy.
+
+### 7. Merge LoRA Weights
 
 After LoRA training, merge the adapter weights into the base model:
 
@@ -245,7 +283,7 @@ python scripts/merge_lora.py \
     --lora_path ./output/lora/lora_768
 ```
 
-### 7. Model Evaluation
+### 8. Model Evaluation
 
 Evaluate your model interactively:
 
@@ -255,7 +293,7 @@ python scripts/eval_llm.py \
     --use_chat_template 1
 ```
 
-### 8. Deploy with vLLM
+### 9. Deploy with vLLM
 
 Start a high-performance API server compatible with OpenAI's client:
 
@@ -266,7 +304,7 @@ python vllm_adapter/start_server.py ./output/lora/lora_768/checkpoint_merged
 # The server is now running at http://localhost:8000
 ```
 
-### 9. Making API Requests
+### 10. Making API Requests
 
 ```python
 from openai import OpenAI

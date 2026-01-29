@@ -376,7 +376,7 @@ if __name__ == "__main__":
     parser.add_argument("--accumulation_steps", type=int, default=4, help="梯度累积步数")
     parser.add_argument("--grad_clip", type=float, default=1.0, help="梯度裁剪阈值")
     parser.add_argument("--log_interval", type=int, default=10, help="日志打印间隔")
-    parser.add_argument("--save_interval", type=int, default=500, help="模型保存间隔")
+    parser.add_argument("--save_interval", type=int, default=100, help="模型保存间隔")
     parser.add_argument("--max_checkpoints", type=int, default=3, help="最大保留的 checkpoint 数量")
 
     # 模型参数

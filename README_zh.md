@@ -310,7 +310,7 @@ python scripts/merge_lora.py \
     --lora_path ./output/lora/lora_768
 ```
 
-### 8. 模型评估
+### 9. 模型评估
 
 以交互方式或自动测试模式评估模型：
 
@@ -321,7 +321,7 @@ python scripts/eval_llm.py \
     --use_chat_template 1
 ```
 
-### 9. 使用 vLLM 部署
+### 10. 使用 vLLM 部署
 
 启动与 OpenAI 客户端兼容的高性能 API 服务器：
 
@@ -332,7 +332,7 @@ python vllm_adapter/start_server.py ./output/lora/lora_768/checkpoint_merged
 # 服务器现在运行在 http://localhost:8000
 ```
 
-### 10. 发起 API 请求
+### 11. 发起 API 请求
 
 ```python
 from openai import OpenAI

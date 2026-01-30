@@ -318,7 +318,7 @@ python scripts/merge_lora.py \
     --lora_path ./output/lora/lora_768
 ```
 
-### 8. Model Evaluation
+### 9. Model Evaluation
 
 Evaluate your model interactively:
 
@@ -328,7 +328,7 @@ python scripts/eval_llm.py \
     --use_chat_template 1
 ```
 
-### 9. Deploy with vLLM
+### 10. Deploy with vLLM
 
 Start a high-performance API server compatible with OpenAI's client:
 
@@ -339,7 +339,7 @@ python vllm_adapter/start_server.py ./output/lora/lora_768/checkpoint_merged
 # The server is now running at http://localhost:8000
 ```
 
-### 10. Making API Requests
+### 11. Making API Requests
 
 ```python
 from openai import OpenAI

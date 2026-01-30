@@ -337,7 +337,7 @@ print(response.choices[0].message.content)
 ```bibtex
 @software{vermind2026,
   title={VerMind: A High-Performance, Lightweight Language Model with GQA},
-  author={Yijin Zhou},
+  author={nev8rz},
   year={2026},
   url={https://github.com/nev8rz/vermind}
 }
@@ -345,4 +345,4 @@ print(response.choices[0].message.content)
 
 ---
 
-<p align="center">由 Yijin Zhou 用 ❤️ 制作</p>
+<p align="center">由 nev8rz 用 ❤️ 制作</p>

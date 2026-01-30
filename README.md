@@ -344,7 +344,7 @@ If you use VerMind in your research or work, please consider citing it:
 ```bibtex
 @software{vermind2026,
   title={VerMind: A High-Performance, Lightweight Language Model with GQA},
-  author={Yijin Zhou},
+  author={nev8rz},
   year={2026},
   url={https://github.com/nev8rz/vermind}
 }
@@ -352,4 +352,4 @@ If you use VerMind in your research or work, please consider citing it:
 
 ---
 
-<p align="center">Made with ❤️ by Yijin Zhou</p>
+<p align="center">Made with ❤️ by nev8rz</p>

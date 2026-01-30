@@ -7,7 +7,7 @@ cd /root/vermind
 source .venv/bin/activate
 
 uv run python train/reason.py \
-    --data_path /root/vermind/dataset/reason.jsonl \
+    --data_path /root/vermind/dataset/r1_mix_1024.jsonl \
     --save_dir /root/vermind/output/reason \
     --tokenizer_path /root/vermind/vermind_tokenizer \
     --from_weight /root/vermind/output/sft/full_sft_768 \

@@ -55,6 +55,7 @@
 | 📦 **Packed SFT Training**            | Efficient sequence packing for SFT training with Varlen FlashAttention, reducing padding waste and improving GPU utilization by packing multiple sequences into batches. |
 | 🎯 **Direct Preference Optimization (DPO)** | Align models with human preferences using preference pairs, improving output quality without requiring a separate reward model. |
 | 🎮 **Proximal Policy Optimization (PPO)** | Advanced RLHF training with reward models for enhanced reasoning capabilities and response quality. |
+| 🎯 **Group Relative Policy Optimization (GRPO)** | Efficient RL training without critic model, using group-relative advantages for policy optimization. |
 
 ## 🏗️ Architecture Overview
 
@@ -73,10 +74,10 @@ VerMind's architecture is a decoder-only transformer optimized for performance a
 
 VerMind has been evaluated on Chinese language understanding benchmarks (768 hidden size model):
 
-| Benchmark | Version | SFT | DPO | PPO |
+| Benchmark | Version | SFT | DPO | PPO | GRPO |
 |-----------|---------|-----|-----|-----|
-| ACLUE | v1 | 25.67% ± 0.62% | 25.41% ± 0.62% | **25.82%** ± 0.62% |
-| CEval-Valid | v2 | 23.85% ± 1.17% | 23.55% ± 1.16% | **23.92%** ± 1.16% |
+| ACLUE | v1 | 25.67% ± 0.62% | 25.41% ± 0.62% | **25.82%** ± 0.62% | 25.76% ± 0.62% |
+| CEval-Valid | v2 | 23.85% ± 1.17% | 23.55% ± 1.16% | **23.92%** ± 1.16% | 23.78% ± 1.16% |
 | CMMLU | v1 | 24.79% ± 0.40% | **25.19%** ± 0.40% | 25.17% ± 0.40% |
 | TMMLUPlus | v2 | 25.15% ± 0.22% | **25.33%** ± 0.22% | 25.17% ± 0.22% |
 
@@ -109,7 +110,7 @@ uv pip install -e .
 
 ## 🏃‍♀️ Usage Examples
 
-VerMind provides a complete training pipeline with convenient shell scripts located in `examples/`. The training workflow follows: **Tokenizer → Pre-training → SFT → DPO/PPO (optional) → LoRA → Deployment**.
+VerMind provides a complete training pipeline with convenient shell scripts located in `examples/`. The training workflow follows: **Tokenizer → Pre-training → SFT → DPO/PPO/GRPO (optional) → LoRA → Deployment**.
 
 ### 1. Train Tokenizer
 
@@ -273,7 +274,41 @@ python train/ppo.py \
 
 PPO training uses a reward model to guide the policy optimization, making it suitable for complex alignment tasks. The training involves an actor-critic architecture with KL penalty to prevent the model from deviating too far from the reference policy.
 
-### 7. Merge LoRA Weights
+### 7. Group Relative Policy Optimization (GRPO)
+
+For efficient RL training without a critic model, using group-relative advantages:
+
+```bash
+# Option 1: Use the launch script (runs in tmux)
+bash examples/grpo.sh
+
+# Option 2: Run directly with custom parameters
+python train/grpo.py \
+    --data_path /path/to/rlaif_data.jsonl \
+    --save_dir ./output/grpo \
+    --tokenizer_path ./vermind_tokenizer \
+    --from_weight ./output/sft/full_sft_768 \
+    --ref_weight ./output/sft/full_sft_768 \
+    --reward_model_path /path/to/reward_model \
+    --epochs 3 \
+    --learning_rate 1e-6 \
+    --batch_size 4 \
+    --num_generations 4 \
+    --max_seq_len 512 \
+    --max_gen_len 1536 \
+    --beta 0.04
+```
+
+**GRPO Key Parameters:**
+
+- `--reward_model_path`: Path to the reward model for computing rewards
+- `--num_generations`: Number of responses generated per prompt (default: 4)
+- `--beta`: KL divergence penalty coefficient (default: 0.04)
+- `--reasoning`: Set to 1 to enable reasoning mode with format rewards
+
+GRPO eliminates the need for a critic model by computing relative advantages within groups of responses. This reduces memory usage and simplifies training while maintaining alignment quality.
+
+### 8. Merge LoRA Weights
 
 After LoRA training, merge the adapter weights into the base model:
 

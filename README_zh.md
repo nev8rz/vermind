@@ -49,6 +49,7 @@
 | 📦 **打包式 SFT 训练** | 使用 Varlen FlashAttention 的序列打包 SFT，减少填充浪费，提升 GPU 利用率。 |
 | 🎯 **直接偏好优化 (DPO)** | 使用偏好对对齐人类偏好，无需奖励模型即可提升输出质量。 |
 | 🎮 **近端策略优化 (PPO)** | 使用奖励模型进行 RLHF 训练，增强推理能力和回复质量。 |
+| 🎯 **组相对策略优化 (GRPO)** | 无需 Critic 模型的高效 RL 训练，使用组内相对优势进行策略优化。 |
 
 ## 🏗️ 架构概览
 
@@ -65,10 +66,10 @@ VerMind 的架构是一个为性能和可扩展性而优化的仅解码器 Trans
 
 VerMind 在中文语言理解基准测试中的表现（768 隐藏层大小模型）：
 
-| 基准测试 | 版本 | SFT | DPO | PPO |
+| 基准测试 | 版本 | SFT | DPO | PPO | GRPO |
 |---------|------|-----|-----|-----|
-| ACLUE | v1 | 25.67% ± 0.62% | 25.41% ± 0.62% | **25.82%** ± 0.62% |
-| CEval-Valid | v2 | 23.85% ± 1.17% | 23.55% ± 1.16% | **23.92%** ± 1.16% |
+| ACLUE | v1 | 25.67% ± 0.62% | 25.41% ± 0.62% | **25.82%** ± 0.62% | 25.76% ± 0.62% |
+| CEval-Valid | v2 | 23.85% ± 1.17% | 23.55% ± 1.16% | **23.92%** ± 1.16% | 23.78% ± 1.16% |
 | CMMLU | v1 | 24.79% ± 0.40% | **25.19%** ± 0.40% | 25.17% ± 0.40% |
 | TMMLUPlus | v2 | 25.15% ± 0.22% | **25.33%** ± 0.22% | 25.17% ± 0.22% |
 
@@ -101,7 +102,7 @@ uv pip install -e .
 
 ## 🏃‍♀️ 使用示例
 
-VerMind 提供了一个完整的训练流程，并在 `examples/` 目录中提供了便捷的 Shell 脚本。训练工作流如下：**分词器 → 预训练 → SFT → DPO/PPO（可选）→ LoRA → 部署**。
+VerMind 提供了一个完整的训练流程，并在 `examples/` 目录中提供了便捷的 Shell 脚本。训练工作流如下：**分词器 → 预训练 → SFT → DPO/PPO/GRPO（可选）→ LoRA → 部署**。
 
 ### 1. 训练分词器
 
@@ -265,7 +266,41 @@ python train/ppo.py \
 
 PPO 训练使用奖励模型来引导策略优化，适用于复杂的对齐任务。训练采用 Actor-Critic 架构，并通过 KL 惩罚防止模型偏离参考策略过远。
 
-### 7. 合并 LoRA 权重
+### 7. 组相对策略优化 (GRPO)
+
+无需 Critic 模型的高效 RL 训练，使用组内相对优势：
+
+```bash
+# 选项1：使用启动脚本（在 tmux 中运行）
+bash examples/grpo.sh
+
+# 选项2：直接使用自定义参数运行
+python train/grpo.py \
+    --data_path /path/to/rlaif_data.jsonl \
+    --save_dir ./output/grpo \
+    --tokenizer_path ./vermind_tokenizer \
+    --from_weight ./output/sft/full_sft_768 \
+    --ref_weight ./output/sft/full_sft_768 \
+    --reward_model_path /path/to/reward_model \
+    --epochs 3 \
+    --learning_rate 1e-6 \
+    --batch_size 4 \
+    --num_generations 4 \
+    --max_seq_len 512 \
+    --max_gen_len 1536 \
+    --beta 0.04
+```
+
+**GRPO 关键参数说明：**
+
+- `--reward_model_path`: 用于计算奖励的奖励模型路径
+- `--num_generations`: 每个提示生成的响应数量（默认：4）
+- `--beta`: KL 散度惩罚系数（默认：0.04）
+- `--reasoning`: 设置为 1 启用带格式奖励的推理模式
+
+GRPO 通过在响应组内计算相对优势，消除了对 Critic 模型的需求。这减少了内存使用并简化了训练，同时保持了对齐质量。
+
+### 8. 合并 LoRA 权重
 
 LoRA 训练后，将适配器权重合并到基础模型中：
 

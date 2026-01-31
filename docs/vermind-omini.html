@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VerMind-OMini - Edge AI Model</title>
+    <meta name="description" content="VerMind-OMini is an ultra-compact variant designed for edge deployment, bringing AI to mobile and embedded devices.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #f59e0b;
+            --primary-dark: #d97706;
+            --secondary: #ef4444;
+            --bg-dark: #0f0a0a;
+            --bg-card: #1a1313;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --border: #2d1f1f;
+            --gradient-1: linear-gradient(135deg, #f59e0b 0%, #ef4444 50%, #f97316 100%);
+            --gradient-2: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+        
+        /* Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        
+        .bg-grid {
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            top: -50%;
+            left: -50%;
+            background-image: 
+                linear-gradient(rgba(245, 158, 11, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(245, 158, 11, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            animation: gridMove 20s linear infinite;
+        }
+        
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(60px, 60px); }
+        }
+        
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.3;
+            animation: float 15s ease-in-out infinite;
+        }
+        
+        .orb-1 {
+            width: 500px;
+            height: 500px;
+            background: var(--primary);
+            top: -150px;
+            left: -150px;
+        }
+        
+        .orb-2 {
+            width: 400px;
+            height: 400px;
+            background: var(--secondary);
+            bottom: -100px;
+            right: -100px;
+            animation-delay: -5s;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-30px, 30px) scale(1.1); }
+        }
+        
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+        
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(15, 10, 10, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            z-index: 1000;
+            padding: 16px 0;
+        }
+        
+        nav .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+        
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient-1);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 28px;
+            list-style: none;
+            align-items: center;
+        }
+        
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+        }
+        
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+        
+        .back-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        
+        .back-link:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+        
+        /* Hero */
+        .hero {
+            padding: 160px 0 100px;
+            text-align: center;
+        }
+        
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--primary);
+            margin-bottom: 32px;
+        }
+        
+        .hero h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: clamp(3rem, 6vw, 5rem);
+            font-weight: 800;
+            margin-bottom: 24px;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .hero-tagline {
+            font-size: 1.5rem;
+            color: var(--primary);
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        
+        .hero-description {
+            font-size: 1.15rem;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto 40px;
+            line-height: 1.7;
+        }
+        
+        .hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-family: 'Syne', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 14px 28px;
+            border-radius: 10px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: var(--gradient-1);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(245, 158, 11, 0.3);
+        }
+        
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+        
+        /* Features */
+        .features {
+            padding: 100px 0;
+        }
+        
+        .section-title {
+            text-align: center;
+            font-family: 'Syne', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        
+        .section-subtitle {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 60px;
+            font-size: 1.1rem;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+        }
+        
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            transition: all 0.3s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(245, 158, 11, 0.15);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+        
+        .feature-card h3 {
+            font-size: 1.2rem;
+            margin-bottom: 12px;
+        }
+        
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        
+        /* Comparison */
+        .comparison {
+            padding: 100px 0;
+            background: linear-gradient(180deg, transparent 0%, rgba(26, 19, 19, 0.5) 50%, transparent 100%);
+        }
+        
+        .comp-table {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        
+        .comp-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .comp-table th,
+        .comp-table td {
+            padding: 16px 20px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .comp-table th {
+            background: rgba(245, 158, 11, 0.1);
+            font-weight: 600;
+            color: var(--primary);
+            font-size: 0.95rem;
+        }
+        
+        .comp-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .comp-table td {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+        
+        .comp-table td:first-child {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        
+        .check {
+            color: var(--primary);
+            font-weight: 700;
+        }
+        
+        /* Use Cases */
+        .usecases {
+            padding: 100px 0;
+        }
+        
+        .usecases-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+        
+        .usecase-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            transition: all 0.3s;
+        }
+        
+        .usecase-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+        }
+        
+        .usecase-icon {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+        
+        .usecase-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 12px;
+        }
+        
+        .usecase-card p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        
+        /* Quick Start */
+        .quickstart {
+            padding: 100px 0;
+        }
+        
+        .quickstart-steps {
+            display: grid;
+            gap: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .step {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+        }
+        
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .step-number {
+            width: 32px;
+            height: 32px;
+            background: var(--gradient-1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+        
+        .step h3 {
+            font-size: 1.1rem;
+        }
+        
+        .step code {
+            display: block;
+            background: #0d1117;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            color: var(--text-primary);
+            line-height: 1.5;
+            white-space: pre;
+        }
+        
+        /* Footer */
+        footer {
+            padding: 60px 0;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+        
+        footer p {
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+        
+        footer .links {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+        }
+        
+        footer .links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        
+        footer .links a:hover {
+            color: var(--primary);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero {
+                padding: 140px 0 80px;
+            }
+            
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .hero-stats {
+                gap: 24px;
+            }
+            
+            .stat-value {
+                font-size: 2rem;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .section-title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation">
+        <div class="bg-grid"></div>
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+    </div>
+
+    <nav>
+        <div class="container">
+            <a href="index.html" class="logo">
+                <div class="logo-icon">⚡</div>
+                <span>VerMind-OMini</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#comparison">Comparison</a></li>
+                <li><a href="#usecases">Use Cases</a></li>
+                <li><a href="#quickstart">Quick Start</a></li>
+            </ul>
+            <a href="index.html" class="back-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                All Models
+            </a>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="container">
+            <div class="hero-badge">
+                <span>⚡</span>
+                Edge AI Optimized
+            </div>
+            <h1>VerMind-OMini</h1>
+            <p class="hero-tagline">Small · Fast · Everywhere</p>
+            <p class="hero-description">An ultra-compact variant of VerMind designed specifically for edge deployment. Bring powerful AI capabilities to mobile devices, IoT, and embedded systems without compromising on speed or efficiency.</p>
+            
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <div class="stat-value">&lt;100M</div>
+                    <div class="stat-label">Parameters</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">5x</div>
+                    <div class="stat-label">Faster</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">10x</div>
+                    <div class="stat-label">Smaller</div>
+                </div>
+            </div>
+            
+            <div class="hero-buttons">
+                <a href="https://github.com/nev8rz/vermind" class="btn btn-primary" target="_blank">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    View on GitHub
+                </a>
+                <a href="#quickstart" class="btn btn-secondary">Get Started</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="features" id="features">
+        <div class="container">
+            <h2 class="section-title">Edge-First Features</h2>
+            <p class="section-subtitle">Optimized for deployment on resource-constrained devices</p>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <h3>Mobile-Ready</h3>
+                    <p>Run inference on smartphones and tablets with minimal latency and battery impact.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔋</div>
+                    <h3>Battery Efficient</h3>
+                    <p>Optimized architecture reduces power consumption for all-day operation on mobile devices.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🚀</div>
+                    <h3>CPU Inference</h3>
+                    <p>Fast inference on CPU without requiring GPU acceleration, perfect for edge devices.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📦</div>
+                    <h3>Quantization Optimized</h3>
+                    <p>INT8 and INT4 quantization support reduces model size by up to 75% with minimal accuracy loss.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🌐</div>
+                    <h3>ONNX Export</h3>
+                    <p>Export to ONNX format for deployment across diverse hardware platforms and frameworks.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <h3>Private & Local</h3>
+                    <p>Keep data on-device for privacy-sensitive applications. No cloud required.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="comparison" id="comparison">
+        <div class="container">
+            <h2 class="section-title">How It Compares</h2>
+            <p class="section-subtitle">VerMind-OMini vs standard VerMind</p>
+            
+            <div class="comp-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th>VerMind</th>
+                            <th>VerMind-OMini</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Parameters</td>
+                            <td>~104M</td>
+                            <td>&lt; 100M</td>
+                        </tr>
+                        <tr>
+                            <td>Model Size (FP16)</td>
+                            <td>~200MB</td>
+                            <td>~180MB</td>
+                        </tr>
+                        <tr>
+                            <td>Quantized (INT8)</td>
+                            <td>~100MB</td>
+                            <td>~90MB</td>
+                        </tr>
+                        <tr>
+                            <td>CPU Inference</td>
+                            <td>Supported</td>
+                            <td><span class="check">Optimized</span></td>
+                        </tr>
+                        <tr>
+                            <td>Mobile Deployment</td>
+                            <td>Possible</td>
+                            <td><span class="check">Designed for</span></td>
+                        </tr>
+                        <tr>
+                            <td>Battery Efficiency</td>
+                            <td>Standard</td>
+                            <td><span class="check">High</span></td>
+                        </tr>
+                        <tr>
+                            <td>Context Length</td>
+                            <td>2K / 32K</td>
+                            <td>2K / 8K</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="usecases" id="usecases">
+        <div class="container">
+            <h2 class="section-title">Use Cases</h2>
+            <p class="section-subtitle">Perfect for on-device AI applications</p>
+            
+            <div class="usecases-grid">
+                <div class="usecase-card">
+                    <div class="usecase-icon">💬</div>
+                    <h3>On-Device Chat</h3>
+                    <p>Private conversational AI that runs entirely on the user's device. No data leaves the phone, ensuring complete privacy.</p>
+                </div>
+                <div class="usecase-card">
+                    <div class="usecase-icon">✍️</div>
+                    <h3>Smart Keyboard</h3>
+                    <p>Intelligent text suggestions, grammar correction, and smart replies built directly into mobile keyboards.</p>
+                </div>
+                <div class="usecase-card">
+                    <div class="usecase-icon">🏠</div>
+                    <h3>Smart Home Control</h3>
+                    <p>Voice-activated home automation that works offline, responding instantly to commands without cloud latency.</p>
+                </div>
+                <div class="usecase-card">
+                    <div class="usecase-icon">📚</div>
+                    <h3>Offline Learning</h3>
+                    <p>Educational AI tutoring that works without internet connectivity, perfect for remote areas or travel.</p>
+                </div>
+                <div class="usecase-card">
+                    <div class="usecase-icon">🏭</div>
+                    <h3>Industrial IoT</h3>
+                    <p>Local data analysis and decision-making for industrial sensors and equipment monitoring.</p>
+                </div>
+                <div class="usecase-card">
+                    <div class="usecase-icon">🚗</div>
+                    <h3>Automotive Edge</h3>
+                    <p>In-vehicle AI assistants and control systems that operate reliably without network dependency.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="quickstart" id="quickstart">
+        <div class="container">
+            <h2 class="section-title">Quick Start</h2>
+            <p class="section-subtitle">Deploy VerMind-OMini on your edge device</p>
+            
+            <div class="quickstart-steps">
+                <div class="step">
+                    <div class="step-header">
+                        <div class="step-number">1</div>
+                        <h3>Install</h3>
+                    </div>
+                    <code>pip install vermind-omini</code>
+                </div>
+                <div class="step">
+                    <div class="step-header">
+                        <div class="step-number">2</div>
+                        <h3>Load Quantized Model</h3>
+                    </div>
+                    <code>from vermind_models import VerMindOMini
+
+model = VerMindOMini.from_pretrained(
+    "nev8rz/vermind-omini",
+    load_in_8bit=True  # or load_in_4bit=True
+)</code>
+                </div>
+                <div class="step">
+                    <div class="step-header">
+                        <div class="step-number">3</div>
+                        <h3>Export to ONNX (Optional)</h3>
+                    </div>
+                    <code>python scripts/export_onnx.py \
+    --model_path ./output/omini \
+    --output_path ./output/omini.onnx \
+    --quantize int8</code>
+                </div>
+                <div class="step">
+                    <div class="step-header">
+                        <div class="step-number">4</div>
+                        <h3>Deploy on Mobile</h3>
+                    </div>
+                    <code># iOS (Core ML)
+python scripts/export_coreml.py --model_path ./output/omini
+
+# Android (TFLite)
+python scripts/export_tflite.py --model_path ./output/omini</code>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>VerMind-OMini is open source under the MIT License.</p>
+            <div class="links">
+                <a href="index.html">Model Family</a>
+                <a href="https://github.com/nev8rz/vermind" target="_blank">GitHub</a>
+                <a href="https://github.com/nev8rz/vermind/issues" target="_blank">Issues</a>
+                <a href="https://github.com/nev8rz/vermind/blob/main/LICENSE" target="_blank">License</a>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

@@ -43,11 +43,7 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
                 labels=labels,
                 pixel_values=pixel_values
             )
-            loss = res.loss
-            # 只在 aux_loss 有值且需要梯度时添加
-            if hasattr(res, 'aux_loss') and res.aux_loss is not None and res.aux_loss != 0:
-                loss = loss + res.aux_loss
-            loss = loss / args.accumulation_steps
+            loss = res.loss / args.accumulation_steps
 
         scaler.scale(loss).backward()
 
@@ -63,12 +59,10 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
         if step % args.log_interval == 0 or step == iters - 1:
             spend_time = time.time() - start_time
             current_loss = loss.item() * args.accumulation_steps
-            current_aux_loss = 0.0
-            current_logits_loss = current_loss - current_aux_loss
             current_lr = optimizer.param_groups[-1]['lr']
             eta_min = spend_time / (step + 1) * iters // 60 - spend_time // 60
-            Logger(f'Epoch:[{epoch + 1}/{args.epochs}]({step}/{iters}), loss: {current_loss:.4f}, logits_loss: {current_logits_loss:.4f}, aux_loss: {current_aux_loss:.4f}, lr: {current_lr:.8f}, epoch_time: {eta_min:.1f}min')
-            if swanlab: swanlab.log({"loss": current_loss, "logits_loss": current_logits_loss, "aux_loss": current_aux_loss, "learning_rate": current_lr, "epoch_time": eta_min})
+            Logger(f'Epoch:[{epoch + 1}/{args.epochs}]({step}/{iters}), loss: {current_loss:.4f}, lr: {current_lr:.8f}, epoch_time: {eta_min:.1f}min')
+            if swanlab: swanlab.log({"loss": current_loss, "learning_rate": current_lr, "epoch_time": eta_min})
 
         if (step % args.save_interval == 0 or step == iters - 1) and is_main_process():
             model.eval()

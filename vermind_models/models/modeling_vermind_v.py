@@ -168,7 +168,6 @@ class VerMindVLM(VerMindForCausalLM):
 
         hidden_states = self.model.norm(hidden_states)
 
-        aux_loss = torch.tensor(0.0, device=hidden_states.device)
         slice_indices = slice(-logits_to_keep, None) if isinstance(logits_to_keep, int) else logits_to_keep
         logits = self.lm_head(hidden_states[:, slice_indices, :])
 
@@ -179,5 +178,4 @@ class VerMindVLM(VerMindForCausalLM):
             loss = F.cross_entropy(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1), ignore_index=-100)
 
         output = CausalLMOutputWithPast(loss=loss, logits=logits, past_key_values=presents, hidden_states=hidden_states)
-        output.aux_loss = aux_loss
         return output

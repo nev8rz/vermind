@@ -91,7 +91,7 @@ if __name__ == "__main__":
     parser.add_argument('--save_weight', default='vlm_pretrain', type=str, help="保存权重的前缀名")
     parser.add_argument("--epochs", type=int, default=1, help="训练轮数")
     parser.add_argument("--batch_size", type=int, default=8, help="batch size")
-    parser.add_argument("--learning_rate", type=float, default=1e-4, help="初始学习率")
+    parser.add_argument("--learning_rate", type=float, default=5e-4, help="初始学习率")
     parser.add_argument("--warmup_ratio", type=float, default=0.03, help="预热步数比例")
     parser.add_argument("--device", type=str, default="cuda:0" if torch.cuda.is_available() else "cpu", help="训练设备")
     parser.add_argument("--dtype", type=str, default="bfloat16", help="混合精度类型")
@@ -240,14 +240,13 @@ if __name__ == "__main__":
             param.requires_grad = False
         Logger('Vision Encoder frozen')
     
-    # 注意：当 freeze_llm=1 时，我们不设置 requires_grad=False
-    # 因为这样会切断梯度传播到 vision_proj
-    # 相反，我们只在 optimizer 中包含 vision_proj 的参数
+    # 冻结 LLM（梯度可以流过，但这些参数不更新）
     if args.freeze_llm == 1:
-        # 只训练 vision_proj，但保持 LLM 的 requires_grad=True 以允许梯度传播
-        trainable_params_list = list(model.vision_proj.parameters())
+        for name, param in model.named_parameters():
+            if "vision_proj" not in name:
+                param.requires_grad = False
+        trainable_params_list = [p for p in model.parameters() if p.requires_grad]
         Logger('LLM frozen (only training Vision Projection)')
-        Logger('Note: LLM requires_grad kept True to allow gradient flow to vision_proj')
     else:
         # 训练所有可训练参数
         trainable_params_list = [p for p in model.parameters() if p.requires_grad]

@@ -80,11 +80,11 @@ class VerMindVLM(VerMindForCausalLM):
 
     @staticmethod
     def get_image_embeddings(image_tensors, vision_model):
+        # 虽然 vision_model 被冻结，但不要在这里 detach
+        # 否则梯度无法传播到 vision_proj
         with torch.no_grad():
-            # vision_model 现在是 SiglipVisionModel，直接调用
             outputs = vision_model(pixel_values=image_tensors)
-        img_embedding = outputs.last_hidden_state.detach()
-        return img_embedding
+        return outputs.last_hidden_state
 
     def count_vision_proj(self, tokens, h, vision_tensors=None, seqlen=512):
         def find_indices(tokens, image_ids):

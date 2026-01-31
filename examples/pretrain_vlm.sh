@@ -9,6 +9,7 @@ cd /root/vermind
 source .venv/bin/activate
 
 uv run python train/pretrain_vlm.py \
+    --from_weight /root/vermind/output/dpo/dpo_768/checkpoint_1610 \
     --data_path /root/vermind/dataset/vlm_pretrain.parquet \
     --save_dir /root/vermind/output/vlm_pretrain \
     --tokenizer_path /root/vermind/vermind_tokenizer \

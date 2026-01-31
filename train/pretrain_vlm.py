@@ -115,7 +115,7 @@ if __name__ == "__main__":
     
     # 数据路径
     parser.add_argument("--data_path", type=str, required=True, help="Parquet 数据路径")
-    parser.add_argument("--tokenizer_path", type=str, default="../vermind_tokenizer", help="tokenizer路径")
+    parser.add_argument("--tokenizer_path", type=str, default="./vermind_tokenizer", help="tokenizer路径")
     parser.add_argument("--vision_encoder_path", type=str, default="./siglip-base-patch16-224", help="Vision Encoder 路径")
     
     # 加载选项

@@ -3,7 +3,7 @@ import torch
 import warnings
 from typing import Optional, Tuple, List, Union
 from torch import nn
-from transformers import SiglipModel, SiglipProcessor
+from transformers import SiglipProcessor
 import torch.nn.functional as F
 from transformers.modeling_outputs import CausalLMOutputWithPast
 
@@ -52,6 +52,7 @@ class VerMindVLM(VerMindForCausalLM):
     @staticmethod
     def get_vision_model(model_path: str):
         from transformers import logging as hf_logging
+        from transformers import SiglipVisionModel
         hf_logging.set_verbosity_error()
         
         if not os.path.exists(model_path) and not "/" in model_path:
@@ -59,16 +60,17 @@ class VerMindVLM(VerMindForCausalLM):
               
         print(f"[VerMind-V] Loading Vision Encoder: {model_path}...")
         try:
-            model = SiglipModel.from_pretrained(model_path)
+            # 只加载 Vision Model，节省 110M 参数
+            vision_model = SiglipVisionModel.from_pretrained(model_path)
             processor = SiglipProcessor.from_pretrained(model_path)
         except Exception as e:
-            print(f"Error loading SigLIP: {e}")
+            print(f"Error loading SigLIP Vision: {e}")
             return None, None
 
-        for param in model.parameters():
+        for param in vision_model.parameters():
             param.requires_grad = False
             
-        return model.eval(), processor
+        return vision_model.eval(), processor
 
     @staticmethod
     def image2tensor(image, processor):
@@ -79,7 +81,8 @@ class VerMindVLM(VerMindForCausalLM):
     @staticmethod
     def get_image_embeddings(image_tensors, vision_model):
         with torch.no_grad():
-            outputs = vision_model.vision_model(pixel_values=image_tensors)
+            # vision_model 现在是 SiglipVisionModel，直接调用
+            outputs = vision_model(pixel_values=image_tensors)
         img_embedding = outputs.last_hidden_state  
         return img_embedding
 

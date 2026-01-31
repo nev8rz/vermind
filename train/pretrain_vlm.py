@@ -240,16 +240,21 @@ if __name__ == "__main__":
             param.requires_grad = False
         Logger('Vision Encoder frozen')
     
+    # 注意：当 freeze_llm=1 时，我们不设置 requires_grad=False
+    # 因为这样会切断梯度传播到 vision_proj
+    # 相反，我们只在 optimizer 中包含 vision_proj 的参数
     if args.freeze_llm == 1:
-        for param in model.model.parameters():
-            param.requires_grad = False
-        for param in model.lm_head.parameters():
-            param.requires_grad = False
+        # 只训练 vision_proj，但保持 LLM 的 requires_grad=True 以允许梯度传播
+        trainable_params_list = list(model.vision_proj.parameters())
         Logger('LLM frozen (only training Vision Projection)')
+        Logger('Note: LLM requires_grad kept True to allow gradient flow to vision_proj')
+    else:
+        # 训练所有可训练参数
+        trainable_params_list = [p for p in model.parameters() if p.requires_grad]
     
     # 统计可训练参数
     total_params = sum(p.numel() for p in model.parameters()) / 1e6
-    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad) / 1e6
+    trainable_params = sum(p.numel() for p in trainable_params_list) / 1e6
     Logger(f'Total params: {total_params:.2f}M, Trainable: {trainable_params:.2f}M')
     
     if args.use_compile == 1:
@@ -266,7 +271,7 @@ if __name__ == "__main__":
     train_sampler = DistributedSampler(train_ds) if dist.is_initialized() else None
     
     scaler = torch.amp.GradScaler('cuda', enabled=(args.dtype == 'float16'))
-    optimizer = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=args.learning_rate)
+    optimizer = optim.AdamW(trainable_params_list, lr=args.learning_rate)
     
     # ========== 6. 从ckp恢复状态 ==========
     start_epoch, start_step = 0, 0

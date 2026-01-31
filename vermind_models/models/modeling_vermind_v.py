@@ -111,10 +111,15 @@ class VerMindVLM(VerMindForCausalLM):
             new_h = []
             for i in range(h.size(0)):
                 if i in image_indices:
-                    h_i = h[i]
+                    h_i = h[i]  # [seq_len, hidden]
                     img_idx = 0
                     for start_idx, end_idx in image_indices[i]:
-                        current_vision_embeds = vision_proj[i] if vision_proj.shape[0] > 1 else vision_proj[0]
+                        # 正确获取当前 batch 的 vision_embeds
+                        # vision_proj shape: [batch, 49, hidden] or [1, batch, 49, hidden]
+                        if vision_proj.dim() == 4:
+                            current_vision_embeds = vision_proj[0, i]  # [49, hidden]
+                        else:
+                            current_vision_embeds = vision_proj[i]  # [49, hidden]
                         
                         if img_idx < 1: 
                              h_i = torch.cat((h_i[:start_idx], current_vision_embeds, h_i[end_idx + 1:]), dim=0)[:seqlen]

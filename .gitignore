@@ -206,6 +206,6 @@ models/
 *.bak
 *.orig
 # SigLIP model
-siglip-base-patch16-224/model.safetensors
+siglip-base-patch16-224
 siglip-*/
 

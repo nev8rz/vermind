@@ -41,7 +41,7 @@ class VLMDataset(Dataset):
         self.max_length = max_length
         self.image_special_token = image_special_token
         
-        # 从 config 获取 image_ids（默认 49 个 token）
+        # 从 config 获取 image_ids（默认 196 个 token，SigLIP 14x14）
         vlm_config = VLMConfig()
         self.image_ids = vlm_config.image_ids
         
@@ -99,6 +99,7 @@ class VLMDataset(Dataset):
     def generate_labels(self, input_ids: list) -> list:
         """
         只计算 assistant 回复部分的 loss
+        视觉 token 是输入特征，不应参与 next token prediction
         """
         labels = [-100] * len(input_ids)
         i = 0

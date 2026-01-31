@@ -19,22 +19,15 @@ class VisionProj(nn.Module):
         self.ve_hidden_size = ve_hidden_size
         self.hidden_size = hidden_size
         
-        self.mlp = nn.Sequential(
-            nn.Linear(self.ve_hidden_size, self.hidden_size),
+        self.proj = nn.Sequential(
+            nn.LayerNorm(ve_hidden_size),  # 先压制 SigLIP 的狂野波动
+            nn.Linear(ve_hidden_size, 512),
             nn.GELU(),
-            nn.Linear(self.hidden_size, self.hidden_size)
+            nn.Linear(512, hidden_size)  # 输出匹配 LLM 维度
         )
 
     def forward(self, image_encoders):
-        x = self.mlp(image_encoders)
-        
-        B, L, C = x.shape
-        H_dim = int(L**0.5)
-        
-        x = x.view(B, H_dim, H_dim, C).permute(0, 3, 1, 2)
-        x = nn.functional.avg_pool2d(x, kernel_size=2, stride=2)
-        x = x.flatten(2).transpose(1, 2)
-        
+        x = self.proj(image_encoders)
         return x
 
 
@@ -115,14 +108,15 @@ class VerMindVLM(VerMindForCausalLM):
                     img_idx = 0
                     for start_idx, end_idx in image_indices[i]:
                         # 正确获取当前 batch 的 vision_embeds
-                        # vision_proj shape: [batch, 49, hidden] or [1, batch, 49, hidden]
+                        # vision_proj shape: [batch, 196, hidden] or [1, batch, 196, hidden]
                         if vision_proj.dim() == 4:
-                            current_vision_embeds = vision_proj[0, i]  # [49, hidden]
+                            current_vision_embeds = vision_proj[0, i]  # [196, hidden]
                         else:
-                            current_vision_embeds = vision_proj[i]  # [49, hidden]
+                            current_vision_embeds = vision_proj[i]  # [196, hidden]
                         
-                        if img_idx < 1: 
-                             h_i = torch.cat((h_i[:start_idx], current_vision_embeds, h_i[end_idx + 1:]), dim=0)[:seqlen]
+                        if img_idx < 1:
+                            # 现在 vision_proj 输出 196 个 tokens (14x14)
+                            h_i = torch.cat((h_i[:start_idx], current_vision_embeds, h_i[end_idx + 1:]), dim=0)[:seqlen]
                         img_idx += 1
                     new_h.append(h_i)
                 else:

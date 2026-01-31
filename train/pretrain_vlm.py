@@ -20,7 +20,7 @@ from train.utils import (
     get_lr, init_distributed_mode, setup_seed, Logger, is_main_process, SkipBatchSampler,
     save_checkpoint, load_checkpoint, resume_training, get_base_save_path
 )
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, AutoModel
 from vermind_models.models.modeling_vermind_v import VerMindVLM
 
 warnings.filterwarnings('ignore')
@@ -233,6 +233,23 @@ if __name__ == "__main__":
         model = VerMindVLM(lm_config, vision_model_path=args.vision_encoder_path)
         model = model.to(args.device)
         Logger('Model initialized from scratch')
+    
+    # 🔧 修复: 如果 Vision Encoder 有 NaN，重新加载原始 SigLIP 权重
+    if model.vision_encoder is not None and is_main_process():
+        has_nan_or_inf = any(torch.isnan(p).any() or torch.isinf(p).any() 
+                             for p in model.vision_encoder.parameters())
+        if has_nan_or_inf:
+            Logger('Vision Encoder has NaN/Inf, re-loading from original...')
+            try:
+                original_vision = AutoModel.from_pretrained(
+                    args.vision_encoder_path, 
+                    local_files_only=True,
+                    torch_dtype=torch.float32
+                )
+                model.vision_encoder.load_state_dict(original_vision.state_dict(), strict=False)
+                Logger('Vision Encoder weights re-loaded')
+            except Exception as e:
+                Logger(f'Failed to re-load Vision Encoder: {e}')
     
     # 冻结设置
     if args.freeze_vision == 1 and model.vision_encoder is not None:

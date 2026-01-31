@@ -83,7 +83,7 @@ class VerMindVLM(VerMindForCausalLM):
         with torch.no_grad():
             # vision_model 现在是 SiglipVisionModel，直接调用
             outputs = vision_model(pixel_values=image_tensors)
-        img_embedding = outputs.last_hidden_state  
+        img_embedding = outputs.last_hidden_state.detach()
         return img_embedding
 
     def count_vision_proj(self, tokens, h, vision_tensors=None, seqlen=512):
@@ -168,7 +168,7 @@ class VerMindVLM(VerMindForCausalLM):
 
         hidden_states = self.model.norm(hidden_states)
 
-        aux_loss = 0
+        aux_loss = torch.tensor(0.0, device=hidden_states.device)
         slice_indices = slice(-logits_to_keep, None) if isinstance(logits_to_keep, int) else logits_to_keep
         logits = self.lm_head(hidden_states[:, slice_indices, :])
 

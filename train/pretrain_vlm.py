@@ -43,7 +43,10 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
                 labels=labels,
                 pixel_values=pixel_values
             )
-            loss = res.loss + res.aux_loss
+            loss = res.loss
+            # 只在 aux_loss 有值且需要梯度时添加
+            if hasattr(res, 'aux_loss') and res.aux_loss is not None and res.aux_loss != 0:
+                loss = loss + res.aux_loss
             loss = loss / args.accumulation_steps
 
         scaler.scale(loss).backward()

@@ -298,6 +298,20 @@
             transform: translateX(4px);
         }
         
+        .dev-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+        
         /* Footer */
         footer {
             padding: 40px 0;
@@ -353,7 +367,7 @@
         <div class="container">
             <img src="https://raw.githubusercontent.com/nev8rz/vermind/main/docs/assets/vermind_logo.png" alt="VerMind" class="hero-logo">
             <h1>VerMind Family</h1>
-            <p class="hero-subtitle">Choose your model variant. Each optimized for different use cases, from pure language understanding to multimodal reasoning and edge deployment.</p>
+            <p class="hero-subtitle">Choose your model variant. Each designed for different use cases, from pure language understanding to multimodal reasoning and edge deployment.</p>
         </div>
     </section>
 
@@ -383,13 +397,13 @@
 
                 <!-- VerMind-V Card -->
                 <a href="vermind-v.html" class="model-card vermind-v">
-                    <span class="card-badge">👁️ Vision + Language</span>
+                    <span class="card-badge">👁️ Vision + Language <span class="dev-badge">Dev</span></span>
                     <div class="card-icon">👁️</div>
                     <h2 class="card-title">VerMind-V</h2>
                     <p class="card-tagline">Vision-Language Model</p>
                     <p class="card-description">Multimodal extension of VerMind with vision encoder integration. Understand and reason about images alongside text.</p>
                     <ul class="card-features">
-                        <li>CLIP/SigLIP vision encoder</li>
+                        <li>Vision encoder integration</li>
                         <li>Image captioning & VQA</li>
                         <li>Visual reasoning tasks</li>
                         <li>Unified architecture</li>
@@ -404,13 +418,13 @@
 
                 <!-- VerMind-OMini Card -->
                 <a href="vermind-omini.html" class="model-card vermind-omini">
-                    <span class="card-badge">⚡ Edge</span>
+                    <span class="card-badge">⚡ Edge <span class="dev-badge">Dev</span></span>
                     <div class="card-icon">⚡</div>
                     <h2 class="card-title">VerMind-OMini</h2>
                     <p class="card-tagline">Lightweight On-Device Model</p>
                     <p class="card-description">Ultra-compact variant designed for edge deployment. Bring AI capabilities to mobile devices and embedded systems.</p>
                     <ul class="card-features">
-                        <li>&lt; 100M parameters</li>
+                        <li>Compact model size</li>
                         <li>Quantization optimized</li>
                         <li>Fast inference on CPU</li>
                         <li>Battery-efficient</li>

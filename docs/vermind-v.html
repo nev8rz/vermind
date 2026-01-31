@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VerMind-V - Vision-Language Model with Multimodal Understanding</title>
+    <title>VerMind-V - Vision-Language Model</title>
     <meta name="description" content="VerMind-V is a vision-language model built on VerMind architecture, enabling multimodal understanding and generation.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -65,12 +65,15 @@
         }
         
         .logo {
-            font-size: 1.5rem;
-            font-weight: 700;
-            background: var(--gradient-1);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+        
+        .logo img {
+            height: 32px;
+            width: auto;
         }
         
         .nav-links {
@@ -118,10 +121,6 @@
             color: white;
         }
         
-        .lang-btn:hover:not(.active) {
-            color: var(--text-primary);
-        }
-        
         .back-link {
             display: flex;
             align-items: center;
@@ -155,20 +154,20 @@
         .hero {
             padding: 160px 0 100px;
             text-align: center;
-            position: relative;
-            overflow: hidden;
         }
         
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 800px;
-            height: 800px;
-            background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%);
-            pointer-events: none;
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--primary);
+            margin-bottom: 24px;
         }
         
         .hero h1 {
@@ -184,7 +183,7 @@
         .hero .subtitle {
             font-size: 1.25rem;
             color: var(--text-secondary);
-            max-width: 700px;
+            max-width: 600px;
             margin: 0 auto 40px;
         }
         
@@ -226,31 +225,30 @@
             background: var(--border);
         }
         
-        /* Architecture Section */
-        .architecture {
-            padding: 100px 0;
-            background: linear-gradient(180deg, transparent 0%, rgba(30, 41, 59, 0.5) 50%, transparent 100%);
-        }
-        
-        .arch-content {
+        /* Section Styles */
+        .section-title {
             text-align: center;
-        }
-        
-        .arch-content h2 {
             font-size: 2.5rem;
+            font-weight: 700;
             margin-bottom: 16px;
         }
         
-        .arch-content > p {
+        .section-subtitle {
+            text-align: center;
             color: var(--text-secondary);
-            margin-bottom: 40px;
+            margin-bottom: 60px;
             font-size: 1.1rem;
+        }
+        
+        /* Architecture Section */
+        .architecture {
+            padding: 100px 0;
         }
         
         .arch-diagram {
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 20px;
+            border-radius: 16px;
             padding: 40px;
             margin-bottom: 40px;
             overflow-x: auto;
@@ -294,16 +292,13 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
-            text-align: left;
-            max-width: 900px;
-            margin: 0 auto;
         }
         
         .arch-detail-item {
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 12px;
-            padding: 20px;
+            padding: 24px;
         }
         
         .arch-detail-item h4 {
@@ -320,20 +315,7 @@
         /* Features Section */
         .features {
             padding: 100px 0;
-        }
-        
-        .section-title {
-            text-align: center;
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 16px;
-        }
-        
-        .section-subtitle {
-            text-align: center;
-            color: var(--text-secondary);
-            margin-bottom: 60px;
-            font-size: 1.1rem;
+            background: linear-gradient(180deg, transparent 0%, rgba(30, 41, 59, 0.5) 50%, transparent 100%);
         }
         
         .features-grid {
@@ -359,7 +341,7 @@
         .feature-icon {
             width: 48px;
             height: 48px;
-            background: var(--gradient-1);
+            background: rgba(16, 185, 129, 0.15);
             border-radius: 12px;
             display: flex;
             align-items: center;
@@ -379,108 +361,35 @@
             line-height: 1.6;
         }
         
-        /* Models Section */
-        .models {
+        /* Coming Soon Section */
+        .coming-soon {
             padding: 100px 0;
-            background: linear-gradient(180deg, transparent 0%, rgba(30, 41, 59, 0.5) 50%, transparent 100%);
         }
         
-        .specs-table {
-            max-width: 900px;
+        .coming-soon-card {
+            max-width: 600px;
             margin: 0 auto;
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 16px;
-            overflow: hidden;
+            padding: 48px;
+            text-align: center;
         }
         
-        .specs-table table {
-            width: 100%;
-            border-collapse: collapse;
+        .coming-soon-icon {
+            font-size: 4rem;
+            margin-bottom: 24px;
         }
         
-        .specs-table th,
-        .specs-table td {
-            padding: 16px 20px;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-        }
-        
-        .specs-table th {
-            background: rgba(16, 185, 129, 0.1);
-            font-weight: 600;
-            color: var(--primary);
-            font-size: 0.95rem;
-        }
-        
-        .specs-table tr:last-child td {
-            border-bottom: none;
-        }
-        
-        .specs-table td {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-        }
-        
-        .specs-table td:first-child {
-            color: var(--text-primary);
-            font-weight: 600;
-        }
-        
-        /* Quick Start Section */
-        .quickstart {
-            padding: 100px 0;
-        }
-        
-        .quickstart-steps {
-            display: grid;
-            gap: 20px;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        
-        .step {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 24px;
-        }
-        
-        .step-header {
-            display: flex;
-            align-items: center;
-            gap: 16px;
+        .coming-soon-card h3 {
+            font-size: 1.5rem;
             margin-bottom: 16px;
+            color: var(--primary);
         }
         
-        .step-number {
-            width: 32px;
-            height: 32px;
-            background: var(--gradient-1);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 0.9rem;
-            flex-shrink: 0;
-        }
-        
-        .step h3 {
-            font-size: 1.1rem;
-        }
-        
-        .step code {
-            display: block;
-            background: #0d1117;
-            padding: 16px;
-            border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
-            overflow-x: auto;
-            color: var(--text-primary);
-            line-height: 1.5;
-            white-space: pre;
+        .coming-soon-card p {
+            color: var(--text-secondary);
+            margin-bottom: 24px;
         }
         
         /* Footer */
@@ -528,14 +437,6 @@
                 font-size: 2.5rem;
             }
             
-            .hero .subtitle {
-                font-size: 1.1rem;
-            }
-            
-            .section-title {
-                font-size: 2rem;
-            }
-            
             .nav-links {
                 display: none;
                 position: absolute;
@@ -557,10 +458,6 @@
                 display: block;
             }
             
-            .features-grid {
-                grid-template-columns: 1fr;
-            }
-            
             .arch-flow {
                 flex-direction: column;
                 min-width: auto;
@@ -570,38 +467,8 @@
                 transform: rotate(90deg);
             }
             
-            .arch-details {
-                grid-template-columns: 1fr;
-            }
-            
-            .specs-table {
-                overflow-x: auto;
-            }
-            
-            .specs-table table {
-                min-width: 500px;
-            }
-            
-            .btn {
-                padding: 12px 20px;
-                font-size: 0.95rem;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .hero h1 {
+            .section-title {
                 font-size: 2rem;
-            }
-            
-            .hero-buttons {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .btn {
-                width: 100%;
-                max-width: 280px;
-                justify-content: center;
             }
         }
     </style>
@@ -609,7 +476,9 @@
 <body>
     <nav>
         <div class="container">
-            <div class="logo">VerMind-V</div>
+            <a href="index.html" class="logo">
+                <img src="https://raw.githubusercontent.com/nev8rz/vermind/main/docs/assets/vermind_logo.png" alt="VerMind-V">
+            </a>
             <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -618,11 +487,8 @@
                 </svg>
             </button>
             <ul class="nav-links" id="navLinks">
-                <li><a href="index.html" data-lang="en">Back to Models</a><a href="index.html" data-lang="zh">返回模型</a></li>
                 <li><a href="#architecture" data-lang="en">Architecture</a><a href="#architecture" data-lang="zh">架构</a></li>
                 <li><a href="#features" data-lang="en">Features</a><a href="#features" data-lang="zh">功能</a></li>
-                <li><a href="#models" data-lang="en">Models</a><a href="#models" data-lang="zh">模型</a></li>
-                <li><a href="#quickstart" data-lang="en">Quick Start</a><a href="#quickstart" data-lang="zh">快速开始</a></li>
                 <li>
                     <div class="lang-switch">
                         <button class="lang-btn active" data-lang-switch="en">EN</button>
@@ -634,17 +500,22 @@
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
                 </svg>
-                <span data-lang="en">Back to Models</span>
-                <span data-lang="zh">返回模型</span>
+                <span data-lang="en">All Models</span>
+                <span data-lang="zh">所有模型</span>
             </a>
         </div>
     </nav>
 
     <section class="hero">
         <div class="container">
+            <div class="hero-badge">
+                <span>👁️</span>
+                <span data-lang="en">Vision-Language Model</span>
+                <span data-lang="zh">视觉语言模型</span>
+            </div>
             <h1>VerMind-V</h1>
-            <p class="subtitle" data-lang="en">A vision-language model built on VerMind architecture, enabling multimodal understanding and generation. Process images and text together for rich multimodal reasoning.</p>
-            <p class="subtitle" data-lang="zh">基于 VerMind 架构构建的视觉语言模型，实现多模态理解和生成。同时处理图像和文本，进行丰富的多模态推理。</p>
+            <p class="subtitle" data-lang="en">A multimodal extension of VerMind that brings vision understanding capabilities to the powerful language model backbone. Process images and text together for rich multimodal reasoning.</p>
+            <p class="subtitle" data-lang="zh">VerMind 的多模态扩展，为强大的语言模型主干带来视觉理解能力。同时处理图像和文本，实现丰富的多模态推理。</p>
             <div class="hero-buttons">
                 <a href="https://github.com/nev8rz/vermind" class="btn btn-primary" target="_blank">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -653,68 +524,66 @@
                     <span data-lang="en">View on GitHub</span>
                     <span data-lang="zh">在 GitHub 上查看</span>
                 </a>
-                <a href="#quickstart" class="btn btn-secondary">
-                    <span data-lang="en">Get Started</span>
-                    <span data-lang="zh">快速开始</span>
-                </a>
             </div>
         </div>
     </section>
 
     <section class="architecture" id="architecture">
         <div class="container">
-            <div class="arch-content">
-                <h2 data-lang="en">Architecture</h2>
-                <h2 data-lang="zh">架构</h2>
-                <p data-lang="en">Three-component architecture for seamless multimodal integration</p>
-                <p data-lang="zh">三组件架构，实现无缝多模态集成</p>
-                
-                <div class="arch-diagram">
-                    <div class="arch-flow">
-                        <div class="arch-box">
-                            <h4 data-lang="en">Vision Encoder</h4>
-                            <h4 data-lang="zh">视觉编码器</h4>
-                            <p data-lang="en">CLIP / SigLIP ViT<br>Pre-trained frozen</p>
-                            <p data-lang="zh">CLIP / SigLIP ViT<br>预训练冻结</p>
-                        </div>
-                        <span class="arch-arrow">→</span>
-                        <div class="arch-box">
-                            <h4 data-lang="en">Projector</h4>
-                            <h4 data-lang="zh">投影器</h4>
-                            <p data-lang="en">MLP / Linear Adapter<br>Trainable bridge</p>
-                            <p data-lang="zh">MLP / 线性适配器<br>可训练桥梁</p>
-                        </div>
-                        <span class="arch-arrow">→</span>
-                        <div class="arch-box">
-                            <h4 data-lang="en">VerMind LLM</h4>
-                            <h4 data-lang="zh">VerMind LLM</h4>
-                            <p data-lang="en">Decoder-only LM<br>GQA + SwiGLU</p>
-                            <p data-lang="zh">仅解码器 LM<br>GQA + SwiGLU</p>
-                        </div>
+            <h2 class="section-title" data-lang="en">Architecture</h2>
+            <h2 class="section-title" data-lang="zh">架构</h2>
+            <p class="section-subtitle" data-lang="en">Three-component architecture for seamless multimodal integration</p>
+            <p class="section-subtitle" data-lang="zh">三组件架构实现无缝多模态集成</p>
+            
+            <div class="arch-diagram">
+                <div class="arch-flow">
+                    <div class="arch-box">
+                        <h4 data-lang="en">Vision Encoder</h4>
+                        <h4 data-lang="zh">视觉编码器</h4>
+                        <p data-lang="en">CLIP / SigLIP ViT</p>
+                        <p data-lang="zh">CLIP / SigLIP ViT</p>
+                    </div>
+                    <span class="arch-arrow">→</span>
+                    <div class="arch-box">
+                        <h4 data-lang="en">Projector</h4>
+                        <h4 data-lang="zh">投影器</h4>
+                        <p data-lang="en">MLP / Linear Adapter</p>
+                        <p data-lang="zh">MLP / 线性适配器</p>
+                    </div>
+                    <span class="arch-arrow">→</span>
+                    <div class="arch-box">
+                        <h4 data-lang="en">VerMind LLM</h4>
+                        <h4 data-lang="zh">VerMind LLM</h4>
+                        <p data-lang="en">Decoder-only LM</p>
+                        <p data-lang="zh">仅解码器 LM</p>
                     </div>
                 </div>
-                
-                <div class="arch-details">
-                    <div class="arch-detail-item">
-                        <h4>🔮 <span data-lang="en">Vision Encoder</span><span data-lang="zh">视觉编码器</span></h4>
-                        <p data-lang="en">Pre-trained vision transformer (CLIP-ViT or SigLIP) encodes images into visual tokens.</p>
-                        <p data-lang="zh">预训练的视觉 Transformer（CLIP-ViT 或 SigLIP）将图像编码为视觉 token。</p>
-                    </div>
-                    <div class="arch-detail-item">
-                        <h4>🔄 <span data-lang="en">Projector</span><span data-lang="zh">投影器</span></h4>
-                        <p data-lang="en">Lightweight adapter aligns visual features with language model's embedding space.</p>
-                        <p data-lang="zh">轻量级适配器将视觉特征与语言模型的嵌入空间对齐。</p>
-                    </div>
-                    <div class="arch-detail-item">
-                        <h4>🧠 <span data-lang="en">VerMind LLM</span><span data-lang="zh">VerMind LLM</span></h4>
-                        <p data-lang="en">The powerful decoder-only backbone with GQA and SwiGLU processes combined modalities.</p>
-                        <p data-lang="zh">强大的仅解码器骨干网络，使用 GQA 和 SwiGLU 处理组合模态。</p>
-                    </div>
-                    <div class="arch-detail-item">
-                        <h4>🎯 <span data-lang="en">Unified Training</span><span data-lang="zh">统一训练</span></h4>
-                        <p data-lang="en">End-to-end pre-training and instruction tuning on multimodal datasets.</p>
-                        <p data-lang="zh">在多模态数据集上进行端到端预训练和指令微调。</p>
-                    </div>
+            </div>
+            
+            <div class="arch-details">
+                <div class="arch-detail-item">
+                    <h4 data-lang="en">🔮 Vision Encoder</h4>
+                    <h4 data-lang="zh">🔮 视觉编码器</h4>
+                    <p data-lang="en">Pre-trained vision transformer encodes images into visual tokens.</p>
+                    <p data-lang="zh">预训练视觉 Transformer 将图像编码为视觉 token。</p>
+                </div>
+                <div class="arch-detail-item">
+                    <h4 data-lang="en">🔄 Projector</h4>
+                    <h4 data-lang="zh">🔄 投影器</h4>
+                    <p data-lang="en">Lightweight adapter aligns visual features with language model embeddings.</p>
+                    <p data-lang="zh">轻量级适配器将视觉特征与语言模型嵌入对齐。</p>
+                </div>
+                <div class="arch-detail-item">
+                    <h4 data-lang="en">🧠 VerMind LLM</h4>
+                    <h4 data-lang="zh">🧠 VerMind LLM</h4>
+                    <p data-lang="en">The powerful decoder-only backbone with GQA and SwiGLU.</p>
+                    <p data-lang="zh">具有 GQA 和 SwiGLU 的强大仅解码器主干网络。</p>
+                </div>
+                <div class="arch-detail-item">
+                    <h4 data-lang="en">🎯 Unified Training</h4>
+                    <h4 data-lang="zh">🎯 统一训练</h4>
+                    <p data-lang="en">End-to-end training on multimodal datasets.</p>
+                    <p data-lang="zh">在多模态数据集上进行端到端训练。</p>
                 </div>
             </div>
         </div>
@@ -723,168 +592,82 @@
     <section class="features" id="features">
         <div class="container">
             <h2 class="section-title" data-lang="en">Features</h2>
-            <h2 class="section-title" data-lang="zh">核心功能</h2>
+            <h2 class="section-title" data-lang="zh">功能特性</h2>
             <p class="section-subtitle" data-lang="en">Built for multimodal understanding and generation</p>
             <p class="section-subtitle" data-lang="zh">为多模态理解和生成而构建</p>
+            
             <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-icon">👁️</div>
                     <h3 data-lang="en">Vision Encoder Integration</h3>
                     <h3 data-lang="zh">视觉编码器集成</h3>
-                    <p data-lang="en">Seamlessly integrates CLIP or SigLIP vision encoders with the language model for unified processing.</p>
-                    <p data-lang="zh">将 CLIP 或 SigLIP 视觉编码器与语言模型无缝集成，实现统一处理。</p>
+                    <p data-lang="en">Seamlessly integrates vision encoders with the language model for unified processing.</p>
+                    <p data-lang="zh">将视觉编码器与语言模型无缝集成，实现统一处理。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">📝</div>
                     <h3 data-lang="en">Image Captioning</h3>
                     <h3 data-lang="zh">图像描述</h3>
                     <p data-lang="en">Generate detailed, accurate descriptions of images with contextual understanding.</p>
-                    <p data-lang="zh">通过上下文理解生成详细、准确的图像描述。</p>
+                    <p data-lang="zh">结合上下文理解生成详细、准确的图像描述。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">❓</div>
                     <h3 data-lang="en">Visual Question Answering</h3>
                     <h3 data-lang="zh">视觉问答</h3>
                     <p data-lang="en">Answer questions about image content with precise visual grounding.</p>
-                    <p data-lang="zh">通过精确的视觉基础回答关于图像内容的问题。</p>
+                    <p data-lang="zh">以精确的视觉基础回答关于图像内容的问题。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🧩</div>
                     <h3 data-lang="en">Visual Reasoning</h3>
                     <h3 data-lang="zh">视觉推理</h3>
-                    <p data-lang="en">Perform complex reasoning tasks that require understanding both visual and textual information.</p>
-                    <p data-lang="zh">执行需要理解视觉和文本信息的复杂推理任务。</p>
+                    <p data-lang="en">Perform complex reasoning requiring understanding of both visual and textual information.</p>
+                    <p data-lang="zh">执行需要理解视觉和文本信息的复杂推理。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">⚡</div>
                     <h3 data-lang="en">Efficient Training</h3>
                     <h3 data-lang="zh">高效训练</h3>
                     <p data-lang="en">Two-stage training: projector pre-training followed by visual instruction tuning.</p>
-                    <p data-lang="zh">两阶段训练：投影器预训练，然后是视觉指令微调。</p>
+                    <p data-lang="zh">两阶段训练：投影器预训练后进行视觉指令微调。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🚀</div>
                     <h3 data-lang="en">vLLM Compatible</h3>
                     <h3 data-lang="zh">vLLM 兼容</h3>
-                    <p data-lang="en">Deploy with vLLM for high-throughput multimodal inference in production.</p>
-                    <p data-lang="zh">使用 vLLM 部署，实现生产环境中的高吞吐量多模态推理。</p>
+                    <p data-lang="en">Deploy with vLLM for high-throughput multimodal inference.</p>
+                    <p data-lang="zh">使用 vLLM 部署，实现高吞吐量多模态推理。</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <section class="models" id="models">
+    <section class="coming-soon">
         <div class="container">
-            <h2 class="section-title" data-lang="en">Model Variants</h2>
-            <h2 class="section-title" data-lang="zh">模型变体</h2>
-            <p class="section-subtitle" data-lang="en">Choose the right configuration for your multimodal needs</p>
-            <p class="section-subtitle" data-lang="zh">根据您的多模态需求选择合适的配置</p>
-            
-            <div class="specs-table">
-                <table>
-                    <thead>
-                        <tr>
-                            <th data-lang="en">Model</th>
-                            <th data-lang="zh">模型</th>
-                            <th data-lang="en">Vision Encoder</th>
-                            <th data-lang="zh">视觉编码器</th>
-                            <th data-lang="en">LLM Parameters</th>
-                            <th data-lang="zh">LLM 参数</th>
-                            <th data-lang="en">Context Length</th>
-                            <th data-lang="zh">上下文长度</th>
-                            <th data-lang="en">Resolution</th>
-                            <th data-lang="zh">分辨率</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>VerMind-V-Base</td>
-                            <td>SigLIP-SO</td>
-                            <td>~104M</td>
-                            <td>2K / 32K</td>
-                            <td>384×384</td>
-                        </tr>
-                        <tr>
-                            <td>VerMind-V-Large</td>
-                            <td>SigLIP-SO</td>
-                            <td>~350M</td>
-                            <td>2K / 32K</td>
-                            <td>384×384</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </section>
-
-    <section class="quickstart" id="quickstart">
-        <div class="container">
-            <h2 class="section-title" data-lang="en">Quick Start</h2>
-            <h2 class="section-title" data-lang="zh">快速开始</h2>
-            <p class="section-subtitle" data-lang="en">Get started with VerMind-V in minutes</p>
-            <p class="section-subtitle" data-lang="zh">几分钟内即可启动运行 VerMind-V</p>
-            
-            <div class="quickstart-steps">
-                <div class="step">
-                    <div class="step-header">
-                        <div class="step-number">1</div>
-                        <h3 data-lang="en">Installation</h3>
-                        <h3 data-lang="zh">安装</h3>
-                    </div>
-                    <code>git clone https://github.com/nev8rz/vermind.git
-cd vermind
-uv venv && source .venv/bin/activate
-uv pip install -e .</code>
-                </div>
-                <div class="step">
-                    <div class="step-header">
-                        <div class="step-number">2</div>
-                        <h3 data-lang="en">Visual Pre-training</h3>
-                        <h3 data-lang="zh">视觉预训练</h3>
-                    </div>
-                    <code>bash examples/vlm_pretrain.sh
-# or
-python train/vlm_pretrain.py \
-    --data_path /path/to/image_text_pairs.jsonl \
-    --vision_encoder_path /path/to/siglip</code>
-                </div>
-                <div class="step">
-                    <div class="step-header">
-                        <div class="step-number">3</div>
-                        <h3 data-lang="en">Visual Instruction Tuning</h3>
-                        <h3 data-lang="zh">视觉指令微调</h3>
-                    </div>
-                    <code>bash examples/vlm_sft.sh
-# or
-python train/vlm_sft.py \
-    --data_path /path/to/visual_instructions.jsonl \
-    --from_weight ./output/vlm_pretrain</code>
-                </div>
-                <div class="step">
-                    <div class="step-header">
-                        <div class="step-number">4</div>
-                        <h3 data-lang="en">Deploy</h3>
-                        <h3 data-lang="zh">部署</h3>
-                    </div>
-                    <code>python vllm_adapter/start_server.py ./output/vlm/vlm_base
-# Server: http://localhost:8000</code>
-                </div>
+            <div class="coming-soon-card">
+                <div class="coming-soon-icon">🚧</div>
+                <h3 data-lang="en">Coming Soon</h3>
+                <h3 data-lang="zh">即将推出</h3>
+                <p data-lang="en">VerMind-V is currently in development. Check back soon for updates and documentation.</p>
+                <p data-lang="zh">VerMind-V 目前正在开发中。请稍后再回来查看更新和文档。</p>
+                <a href="https://github.com/nev8rz/vermind" class="btn btn-primary" target="_blank">
+                    <span data-lang="en">Follow Progress on GitHub</span>
+                    <span data-lang="zh">在 GitHub 上关注进展</span>
+                </a>
             </div>
         </div>
     </section>
 
     <footer>
         <div class="container">
-            <p data-lang="en">VerMind-V is open source under the MIT License.</p>
-            <p data-lang="zh">VerMind-V 基于 MIT 许可证开源。</p>
+            <p data-lang="en">VerMind-V is part of the VerMind family. Open source under MIT License.</p>
+            <p data-lang="zh">VerMind-V 是 VerMind 家族的一部分。基于 MIT 许可证开源。</p>
             <div class="links">
                 <a href="index.html" data-lang="en">Model Family</a>
-                <a href="index.html" data-lang="zh">模型系列</a>
+                <a href="index.html" data-lang="zh">模型家族</a>
                 <a href="https://github.com/nev8rz/vermind" target="_blank">GitHub</a>
-                <a href="https://github.com/nev8rz/vermind/issues" target="_blank" data-lang="en">Issues</a>
-                <a href="https://github.com/nev8rz/vermind/issues" target="_blank" data-lang="zh">问题反馈</a>
-                <a href="https://github.com/nev8rz/vermind/blob/main/LICENSE" target="_blank" data-lang="en">License</a>
-                <a href="https://github.com/nev8rz/vermind/blob/main/LICENSE" target="_blank" data-lang="zh">许可证</a>
+                <a href="https://github.com/nev8rz/vermind/issues" target="_blank">Issues</a>
             </div>
         </div>
     </footer>

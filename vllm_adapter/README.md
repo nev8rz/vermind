@@ -2,6 +2,11 @@
 
 vLLM adapter for VerMind models - enables high-performance inference with OpenAI-compatible API.
 
+## Supported Models
+
+- **VerMind**: Pure language model (GQA + SwiGLU)
+- **VerMind-V**: Vision-language model (text-only mode in vLLM)
+
 ## Quick Start
 
 ### Start Server
@@ -10,17 +15,36 @@ vLLM adapter for VerMind models - enables high-performance inference with OpenAI
 cd /root/vermind
 source .venv/bin/activate
 
-# Method 1: Use start script (recommended)
-bash vllm_adapter/start_server.sh
+# Method 1: Use start script with model path
+bash vllm_adapter/start_server.sh /path/to/your/model
 
 # Method 2: Use Python script directly
 python vllm_adapter/start_server.py /path/to/your/model
 
-# Method 3: Specify custom model path
-python vllm_adapter/start_server.py /root/vermind/output/pretrain/pretrain_768/checkpoint_10000
+# Method 3: Custom vLLM options
+bash vllm_adapter/start_server.sh /path/to/model --port 8080 --max-model-len 4096
 ```
 
 The server will start on `http://localhost:8000` by default.
+
+### VerMind (Language Model)
+
+```bash
+# Start with pretrain checkpoint
+bash vllm_adapter/start_server.sh /root/vermind/output/pretrain/pretrain_768/checkpoint_10000
+
+# Start with DPO checkpoint
+bash vllm_adapter/start_server.sh /root/vermind/output/dpo/dpo_768/checkpoint_1610
+```
+
+### VerMind-V (Vision-Language Model)
+
+```bash
+# Start VLM model (text-only mode in vLLM)
+bash vllm_adapter/start_server.sh /root/vermind/output/vlm_pretrain/vlm_from_dpo_768/checkpoint_1000
+```
+
+**Note**: For full VLM inference with image support, use the standard inference script instead of vLLM.
 
 ## OpenAI-Compatible API Usage
 
@@ -36,7 +60,7 @@ client = OpenAI(
 
 # Chat completion
 response = client.chat.completions.create(
-    model="/path/to/vermind/model",
+    model="vermind",
     messages=[
         {"role": "system", "content": "You are a helpful assistant."},
         {"role": "user", "content": "Hello!"}
@@ -55,7 +79,7 @@ print(response.choices[0].message.content)
 curl http://localhost:8000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "/path/to/vermind/model",
+    "model": "vermind",
     "messages": [
       {"role": "system", "content": "You are a helpful assistant."},
       {"role": "user", "content": "Hello!"}
@@ -68,15 +92,11 @@ curl http://localhost:8000/v1/chat/completions \
 curl http://localhost:8000/v1/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "/path/to/vermind/model",
+    "model": "vermind",
     "prompt": "Hello, how are you?",
     "max_tokens": 50
   }'
-```
 
-### Verify Server Status
-
-```bash
 # Health check
 curl http://localhost:8000/health
 
@@ -84,15 +104,37 @@ curl http://localhost:8000/health
 curl http://localhost:8000/v1/models
 ```
 
+## Directory Structure
+
+```
+vllm_adapter/
+├── core/                      # Core VerMind model files
+│   ├── configuration_vermind.py
+│   ├── modeling_vermind.py
+│   ├── vermind.py            # Main vLLM model implementation
+│   └── register.py           # Model registration
+├── vlm/                       # VerMind-V (VLM) files
+│   ├── configuration_vermind_v.py
+│   ├── modeling_vermind_v.py
+│   └── vermind_v.py          # VLM model (text-only in vLLM)
+├── plugin.py                  # vLLM plugin registration
+├── start_server.py            # Server startup script
+├── start_server.sh            # Shell wrapper
+├── __init__.py
+└── README.md
+```
+
 ## Features
 
 - ✅ Automatic plugin registration via vLLM plugin system
 - ✅ Auto-configuration: automatically completes missing config files
-- ✅ Chat model support with chat template
+- ✅ Supports both VerMind and VerMind-V models
 - ✅ OpenAI-compatible API endpoints
+- ✅ LoRA checkpoint detection and merge reminder
 
 ## Notes
 
 - Model checkpoint must include `chat_template.jinja` for chat support
 - Auto-configuration runs automatically on server startup
 - Default port: 8000 (configurable via `--port`)
+- VerMind-V runs in text-only mode in vLLM; for full VLM inference with images, use the standard inference script

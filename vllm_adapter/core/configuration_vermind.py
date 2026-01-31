@@ -5,7 +5,7 @@ import sys
 import os
 
 # Add the vermind_models package to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../../'))
 
 # Import and register the config with Transformers
 from transformers import AutoConfig

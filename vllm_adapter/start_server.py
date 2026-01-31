@@ -2,12 +2,12 @@
 """
 Start vLLM server with VerMind model registration.
 
+Supports:
+- VerMind: Pure language model
+- VerMind-V: Vision-language model (text-only mode in vLLM)
+
 The VerMind model is automatically registered via vLLM's plugin system
 when the package is installed (via entry_points in pyproject.toml).
-
-If the package is not installed, you can manually register by importing:
-    from vllm_adapter.plugin import register_vermind_plugin
-    register_vermind_plugin()
 """
 
 import sys
@@ -23,15 +23,7 @@ os.environ["PYTHONPATH"] = f"/root/vermind:{os.environ.get('PYTHONPATH', '')}"
 
 
 def is_lora_checkpoint(model_path: str) -> bool:
-    """
-    检查路径是否是 LoRA checkpoint（有 adapter_config.json 但没有 config.json）
-    
-    Args:
-        model_path: 模型路径
-    
-    Returns:
-        bool: 是否是 LoRA checkpoint
-    """
+    """Check if path is a LoRA checkpoint."""
     if not os.path.isdir(model_path):
         return False
     
@@ -39,227 +31,217 @@ def is_lora_checkpoint(model_path: str) -> bool:
     config_json_path = os.path.join(model_path, "config.json")
     adapter_model_path = os.path.join(model_path, "adapter_model.safetensors")
     
-    # 如果有 adapter_config.json 和 adapter_model.safetensors，但没有 config.json，则是 LoRA checkpoint
     return (os.path.exists(adapter_config_path) and 
             (os.path.exists(adapter_model_path) or os.path.exists(os.path.join(model_path, "adapter_model.bin"))) and
             not os.path.exists(config_json_path))
 
 
+def detect_model_type(model_path: str) -> str:
+    """
+    Detect whether the model is VerMind or VerMind-V.
+    
+    Returns:
+        "vermind" for pure language model
+        "vermind-v" for vision-language model
+    """
+    config_path = os.path.join(model_path, "config.json")
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            model_type = config.get("model_type", "")
+            if model_type == "vermind-v":
+                return "vermind-v"
+        except Exception:
+            pass
+    return "vermind"
+
+
 def ensure_model_config_complete(model_path: str):
     """
-    确保模型文件夹的配置完整：
-    1. 检查 config.json 是否包含 auto_map（包含 AutoConfig 和 AutoModelForCausalLM）
-    2. 检查是否有 configuration_vermind.py 和 modeling_vermind.py
-    3. 如果缺失，自动从 vllm_adapter 目录复制
-    
-    Args:
-        model_path: 模型文件夹路径
+    Ensure model folder has complete configuration.
+    Copies necessary files from vllm_adapter if missing.
     """
     if not os.path.isdir(model_path):
-        print(f"⚠️  模型路径不是目录: {model_path}")
+        print(f"⚠️  Model path is not a directory: {model_path}")
         return
     
-    # 检查是否是 LoRA checkpoint
     if is_lora_checkpoint(model_path):
-        print(f"⚠️  检测到这是 LoRA checkpoint，不是完整的模型！")
-        print(f"   LoRA checkpoint 不能直接启动，需要先合并到基础模型。")
-        print(f"   使用方法：")
-        print(f"   python scripts/merge_lora.py --model_path <基础模型路径> --lora_path {model_path}")
-        print(f"   然后使用合并后的模型路径启动服务器。")
+        print(f"⚠️  Detected LoRA checkpoint! Please merge first:")
+        print(f"   python scripts/merge_lora.py --model_path <base> --lora_path {model_path}")
         sys.exit(1)
     
+    model_type = detect_model_type(model_path)
     adapter_dir = os.path.dirname(__file__)
-    config_json_path = os.path.join(model_path, "config.json")
-    config_py_path = os.path.join(model_path, "configuration_vermind.py")
-    modeling_py_path = os.path.join(model_path, "modeling_vermind.py")
     
-    source_config_py = os.path.join(adapter_dir, "configuration_vermind.py")
-    source_modeling_py = os.path.join(adapter_dir, "modeling_vermind.py")
+    if model_type == "vermind-v":
+        # Use VLM config files
+        source_config_py = os.path.join(adapter_dir, "vlm/configuration_vermind_v.py")
+        source_modeling_py = os.path.join(adapter_dir, "vlm/modeling_vermind_v.py")
+        print(f"📷 Detected VerMind-V (VLM) model")
+    else:
+        # Use standard config files
+        source_config_py = os.path.join(adapter_dir, "core/configuration_vermind.py")
+        source_modeling_py = os.path.join(adapter_dir, "core/modeling_vermind.py")
+    
+    config_json_path = os.path.join(model_path, "config.json")
+    config_py_path = os.path.join(model_path, os.path.basename(source_config_py))
+    modeling_py_path = os.path.join(model_path, os.path.basename(source_modeling_py))
     
     needs_update = False
     files_copied = []
     
-    # 1. 检查并更新 config.json
+    # Check and update config.json
     if os.path.exists(config_json_path):
         try:
             with open(config_json_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
             
-            # 检查 auto_map 是否存在且完整
-            required_auto_map = {
-                "AutoConfig": "configuration_vermind.VerMindConfig",
-                "AutoModelForCausalLM": "modeling_vermind.VerMindForCausalLM"
-            }
+            if model_type == "vermind-v":
+                required_auto_map = {
+                    "AutoConfig": "configuration_vermind_v.VLMConfig",
+                    "AutoModelForCausalLM": "modeling_vermind_v.VerMindVLM"
+                }
+            else:
+                required_auto_map = {
+                    "AutoConfig": "configuration_vermind.VerMindConfig",
+                    "AutoModelForCausalLM": "modeling_vermind.VerMindForCausalLM"
+                }
             
             if "auto_map" not in config:
-                print(f"📝 检测到 config.json 缺少 auto_map，正在添加...")
+                print(f"📝 Adding auto_map to config.json...")
                 config["auto_map"] = required_auto_map
                 needs_update = True
             else:
-                # 检查是否完整
                 auto_map = config["auto_map"]
                 for key, value in required_auto_map.items():
                     if key not in auto_map or auto_map[key] != value:
-                        print(f"📝 检测到 config.json 的 auto_map 不完整，正在更新...")
-                        if "auto_map" not in config:
-                            config["auto_map"] = {}
-                        config["auto_map"][key] = value
+                        print(f"📝 Updating auto_map in config.json...")
+                        config["auto_map"] = required_auto_map
                         needs_update = True
+                        break
             
             if needs_update:
-                # 备份原文件
                 backup_path = config_json_path + ".backup"
                 if not os.path.exists(backup_path):
                     shutil.copy2(config_json_path, backup_path)
-                    print(f"   💾 已备份原 config.json 到 {os.path.basename(backup_path)}")
+                    print(f"   💾 Backed up config.json")
                 
-                # 写入更新后的配置
                 with open(config_json_path, 'w', encoding='utf-8') as f:
                     json.dump(config, f, indent=2, ensure_ascii=False)
-                print(f"   ✅ 已更新 config.json")
+                print(f"   ✅ Updated config.json")
         except Exception as e:
-            print(f"⚠️  读取/更新 config.json 时出错: {e}")
+            print(f"⚠️  Error updating config.json: {e}")
     else:
-        print(f"⚠️  未找到 config.json: {config_json_path}")
+        print(f"⚠️  config.json not found: {config_json_path}")
     
-    # 2. 检查并复制 configuration_vermind.py
+    # Copy configuration file
     if not os.path.exists(config_py_path):
         if os.path.exists(source_config_py):
             try:
                 shutil.copy2(source_config_py, config_py_path)
-                files_copied.append("configuration_vermind.py")
-                print(f"   ✅ 已复制 configuration_vermind.py 到模型文件夹")
+                files_copied.append(os.path.basename(source_config_py))
+                print(f"   ✅ Copied {os.path.basename(source_config_py)}")
             except Exception as e:
-                print(f"   ❌ 复制 configuration_vermind.py 失败: {e}")
+                print(f"   ❌ Failed to copy: {e}")
         else:
-            print(f"   ⚠️  源文件不存在: {source_config_py}")
+            print(f"   ⚠️  Source not found: {source_config_py}")
     else:
-        print(f"   ✓ configuration_vermind.py 已存在")
+        print(f"   ✓ {os.path.basename(config_py_path)} exists")
     
-    # 3. 检查并复制 modeling_vermind.py
+    # Copy modeling file
     if not os.path.exists(modeling_py_path):
         if os.path.exists(source_modeling_py):
             try:
                 shutil.copy2(source_modeling_py, modeling_py_path)
-                files_copied.append("modeling_vermind.py")
-                print(f"   ✅ 已复制 modeling_vermind.py 到模型文件夹")
+                files_copied.append(os.path.basename(source_modeling_py))
+                print(f"   ✅ Copied {os.path.basename(source_modeling_py)}")
             except Exception as e:
-                print(f"   ❌ 复制 modeling_vermind.py 失败: {e}")
+                print(f"   ❌ Failed to copy: {e}")
         else:
-            print(f"   ⚠️  源文件不存在: {source_modeling_py}")
+            print(f"   ⚠️  Source not found: {source_modeling_py}")
     else:
-        print(f"   ✓ modeling_vermind.py 已存在")
+        print(f"   ✓ {os.path.basename(modeling_py_path)} exists")
     
-    # 总结
     if needs_update or files_copied:
-        print(f"   📋 配置补全完成: {'已更新 config.json' if needs_update else ''} {'已复制文件: ' + ', '.join(files_copied) if files_copied else ''}")
+        print(f"   📋 Configuration complete")
     else:
-        print(f"   ✓ 所有配置文件完整，无需补全")
+        print(f"   ✓ All config files present")
+    
+    return model_type
 
 
-# 从命令行参数中提取模型路径（在设置 sys.argv 之前）
-# 检查是否有模型路径参数
+# Extract model path from command line
 model_path = None
 original_argv = sys.argv.copy()
 
 if len(original_argv) > 1:
-    # 查找第一个看起来像路径的参数（不是以 -- 开头）
     for arg in original_argv[1:]:
         if not arg.startswith('--') and (os.path.exists(arg) or os.path.isdir(arg)):
             model_path = arg
             break
 
-# 如果从 sys.argv 中找到了模型路径，进行配置检查和补全
+# Check and complete model config
 if model_path:
-    print(f"🔍 检查模型配置完整性: {model_path}")
-    ensure_model_config_complete(model_path)
+    print(f"🔍 Checking model configuration: {model_path}")
+    model_type = ensure_model_config_complete(model_path)
     print()
+else:
+    model_type = "vermind"
 
-# CRITICAL: Register plugin BEFORE importing any vLLM modules
-# This ensures the model is registered before vLLM validates architectures
-# Also ensure plugin is loaded in subprocesses by setting up the plugin system
+# Register plugin BEFORE importing vLLM
 try:
     from vllm_adapter.plugin import register_vermind_plugin
     register_vermind_plugin()
-    print("✅ VerMind plugin registered successfully")
+    print("✅ VerMind plugin registered")
 except ImportError as e:
-    print(f"⚠️  Warning: Could not import plugin: {e}")
-    # Try to register manually
-    try:
-        import sys
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-        from vllm_adapter.plugin import register_vermind_plugin
-        register_vermind_plugin()
-        print("✅ VerMind plugin registered (fallback)")
-    except Exception as e2:
-        print(f"❌ Failed to register plugin: {e2}")
-        sys.exit(1)
+    print(f"⚠️  Could not import plugin: {e}")
+    sys.exit(1)
 
-# Verify registration before proceeding
+# Also register VLM plugin if needed
+if model_type == "vermind-v":
+    try:
+        from vllm_adapter.plugin import register_vermind_v_plugin
+        register_vermind_v_plugin()
+        print("✅ VerMind-V plugin registered (text-only mode)")
+        print("   Note: For full VLM inference with images, use standard inference script")
+    except Exception as e:
+        print(f"⚠️  Could not register VLM plugin: {e}")
+
+# Verify registration
 try:
     from vllm import ModelRegistry
     supported = list(ModelRegistry.get_supported_archs())
     if "VerMindForCausalLM" not in supported:
-        print(f"❌ ERROR: VerMindForCausalLM not found in supported architectures!")
-        print(f"   Supported: {supported[:10]}...")
+        print(f"❌ ERROR: VerMindForCausalLM not registered!")
         sys.exit(1)
-    print(f"✅ VerMindForCausalLM is registered in ModelRegistry")
+    print(f"✅ VerMindForCausalLM registered")
 except Exception as e:
-    print(f"⚠️  Warning: Could not verify registration: {e}")
+    print(f"⚠️  Could not verify registration: {e}")
 
-# Ensure plugin is available for subprocesses by monkey-patching vLLM's plugin loader
-# This is needed because vLLM loads plugins in subprocesses, and entry_points may not be available
-try:
-    # Import vLLM's plugin system and ensure our plugin is registered
-    import vllm.plugins as vllm_plugins
-    # Register our plugin function so it's available when vLLM loads plugins
-    if not hasattr(vllm_plugins, '_manual_plugins'):
-        vllm_plugins._manual_plugins = {}
-    vllm_plugins._manual_plugins['vllm.general_plugins'] = vllm_plugins._manual_plugins.get('vllm.general_plugins', {})
-    from vllm_adapter.plugin import register_vermind_plugin
-    vllm_plugins._manual_plugins['vllm.general_plugins']['vermind'] = register_vermind_plugin
-    
-    # Monkey-patch load_plugins_by_group to include our manual plugin
-    original_load = getattr(vllm_plugins, 'load_plugins_by_group', None)
-    if original_load:
-        def patched_load_plugins_by_group(group):
-            result = original_load(group) if original_load else {}
-            # Add our manual plugin if not already loaded
-            if group == 'vllm.general_plugins' and 'vermind' not in result:
-                result['vermind'] = register_vermind_plugin
-            return result
-        vllm_plugins.load_plugins_by_group = patched_load_plugins_by_group
-        print("✅ VerMind plugin patched into vLLM plugin system")
-except Exception as e:
-    # If patching fails, that's okay - manual registration should still work
-    print(f"⚠️  Note: Could not patch plugin system (manual registration should work): {e}")
-
-# Now use vLLM's CLI interface
-# Set sys.argv to match vLLM's expected arguments
-# 如果之前没有从 sys.argv 提取到模型路径，使用默认值
+# Default model path
 if model_path is None:
     model_path = "/root/vermind/output/pretrain/pretrain_768/checkpoint_10000"
-    # 使用默认路径时，也需要检查配置
     if os.path.exists(model_path):
-        print(f"🔍 检查模型配置完整性: {model_path}")
+        print(f"🔍 Checking default model: {model_path}")
         ensure_model_config_complete(model_path)
         print()
 
+# Set up vLLM CLI arguments
 sys.argv = [
     "vllm",
     "serve",
-    model_path,  # 使用模型路径
+    model_path,
     "--gpu-memory-utilization", "0.5",
-    "--trust-remote-code",  # 允许信任远程代码
+    "--trust-remote-code",
     "--port", "8000",
     "--host", "0.0.0.0",
-    "--served-model-name", "vermind",  # 设定服务的模型名称
-    "--max-model-len", "3072",  
-    "--tokenizer", model_path  # 使用与模型路径相同目录的 tokenizer
+    "--served-model-name", model_type,
+    "--max-model-len", "3072",
+    "--tokenizer", model_path
 ]
 
-# Import and run vLLM's main entry point
-# This import happens AFTER registration
+# Run vLLM
 if __name__ == "__main__":
     from vllm.entrypoints.cli.main import main
     main()

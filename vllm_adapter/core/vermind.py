@@ -37,7 +37,7 @@ from vllm.model_executor.models.interfaces import SupportsLoRA, SupportsPP
 # Import VerMind config
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 from vermind_models.config import VerMindConfig
 
 

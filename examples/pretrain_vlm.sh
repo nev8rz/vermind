@@ -15,16 +15,16 @@ uv run python train/pretrain_vlm.py \
     --tokenizer_path /root/vermind/vermind_tokenizer \
     --vision_encoder_path /root/vermind/siglip-base-patch16-224 \
     --epochs 3 \
-    --batch_size 8 \
+    --batch_size 32 \
     --accumulation_steps 8 \
-    --learning_rate 1e-4 \
+    --learning_rate 5e-4 \
     --warmup_ratio 0.03 \
-    --max_seq_len 512 \
+    --max_seq_len 768 \
     --num_workers 4 \
     --save_interval 1000 \
     --log_interval 100 \
     --freeze_vision 1 \
-    --freeze_llm 0 \
+    --freeze_llm 1 \
     --use_swanlab
 "
 

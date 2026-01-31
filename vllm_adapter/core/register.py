@@ -8,14 +8,14 @@ import sys
 import os
 
 # Add parent directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 # Register with Transformers first - MUST be done before any transformers imports
 import vermind_models  # This registers VerMindConfig and VerMindForCausalLM with Transformers
 
 # Register with vLLM
 from vllm import ModelRegistry
-from .vermind import VerMindForCausalLM
+from vllm_adapter.core.vermind import VerMindForCausalLM
 
 # Also register with vLLM's config parser
 try:

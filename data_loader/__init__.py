@@ -2,16 +2,19 @@ from .rlaif_dataset import RLAIFDataset, RLAIF_CACHE_DIR
 from .pretrain_dataset import PretrainDataset, PRETRAIN_CACHE_DIR
 from .sft_dataset import SFTDataset, SFTDatasetPacked, SFT_CACHE_DIR, collate_fn_packed
 from .dpo_dataset import DPODataset, DPO_CACHE_DIR
+from .vlm_dataset import VLMDataset, vlm_collate_fn
 
 __all__ = [
     "RLAIFDataset",
     "RLAIF_CACHE_DIR",
-    "PretrainDataset", 
+    "PretrainDataset",
     "PRETRAIN_CACHE_DIR",
     "SFTDataset",
     "SFTDatasetPacked",
     "SFT_CACHE_DIR",
     "collate_fn_packed",
     "DPODataset",
-    "DPO_CACHE_DIR"
+    "DPO_CACHE_DIR",
+    "VLMDataset",
+    "vlm_collate_fn"
 ]

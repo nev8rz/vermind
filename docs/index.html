@@ -7,21 +7,18 @@
     <meta name="description" content="Navigate between VerMind model variants: VerMind, VerMind-V, and VerMind-OMini">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: #6366f1;
             --primary-dark: #4f46e5;
             --secondary: #10b981;
             --accent: #f59e0b;
-            --bg-dark: #0a0a0f;
-            --bg-card: #13131a;
-            --text-primary: #fafafa;
-            --text-secondary: #a1a1aa;
-            --border: #27272a;
-            --gradient-1: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
-            --gradient-2: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
-            --gradient-3: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border: #334155;
         }
         
         * {
@@ -30,307 +27,217 @@
             box-sizing: border-box;
         }
         
-        body {
-            font-family: 'Space Grotesk', sans-serif;
-            background: var(--bg-dark);
-            color: var(--text-primary);
-            min-height: 100vh;
-            overflow-x: hidden;
+        html {
+            scroll-behavior: smooth;
         }
         
-        /* Animated Background */
-        .bg-animation {
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+        
+        /* Navigation */
+        nav {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 0;
-            overflow: hidden;
+            right: 0;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            z-index: 1000;
+            padding: 16px 0;
         }
         
-        .bg-grid {
-            position: absolute;
-            width: 200%;
-            height: 200%;
-            top: -50%;
-            left: -50%;
-            background-image: 
-                linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
-            background-size: 60px 60px;
-            animation: gridMove 20s linear infinite;
-        }
-        
-        @keyframes gridMove {
-            0% { transform: translate(0, 0); }
-            100% { transform: translate(60px, 60px); }
-        }
-        
-        .orb {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(80px);
-            opacity: 0.4;
-            animation: float 20s ease-in-out infinite;
-        }
-        
-        .orb-1 {
-            width: 600px;
-            height: 600px;
-            background: var(--primary);
-            top: -200px;
-            left: -200px;
-            animation-delay: 0s;
-        }
-        
-        .orb-2 {
-            width: 500px;
-            height: 500px;
-            background: var(--secondary);
-            bottom: -150px;
-            right: -100px;
-            animation-delay: -5s;
-        }
-        
-        .orb-3 {
-            width: 400px;
-            height: 400px;
-            background: var(--accent);
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            animation-delay: -10s;
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            25% { transform: translate(50px, -50px) scale(1.1); }
-            50% { transform: translate(0, 50px) scale(0.95); }
-            75% { transform: translate(-50px, -25px) scale(1.05); }
-        }
-        
-        /* Main Container */
-        .container {
-            position: relative;
-            z-index: 1;
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 60px 24px;
-            min-height: 100vh;
+        nav .container {
             display: flex;
-            flex-direction: column;
-            justify-content: center;
+            justify-content: space-between;
+            align-items: center;
         }
         
-        /* Header */
-        .header {
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .logo img {
+            height: 36px;
+            width: auto;
+        }
+        
+        .github-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+        
+        .github-btn:hover {
+            background: var(--border);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+        
+        /* Hero Section */
+        .hero {
+            padding: 140px 0 80px;
             text-align: center;
-            margin-bottom: 80px;
         }
         
-        .brand {
-            font-family: 'Syne', sans-serif;
-            font-size: 1rem;
-            font-weight: 600;
-            letter-spacing: 0.3em;
-            text-transform: uppercase;
-            color: var(--text-secondary);
-            margin-bottom: 24px;
+        .hero-logo {
+            width: 120px;
+            height: auto;
+            margin-bottom: 32px;
         }
         
-        .title {
-            font-family: 'Syne', sans-serif;
-            font-size: clamp(3rem, 8vw, 6rem);
-            font-weight: 800;
-            line-height: 1;
-            margin-bottom: 24px;
-            background: var(--gradient-1);
+        .hero h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
         
-        .subtitle {
-            font-size: 1.25rem;
+        .hero-subtitle {
+            font-size: 1.15rem;
             color: var(--text-secondary);
             max-width: 600px;
-            margin: 0 auto;
-            line-height: 1.6;
+            margin: 0 auto 60px;
         }
         
-        /* Cards Grid */
-        .cards-grid {
+        /* Cards Section */
+        .models-section {
+            padding: 0 0 100px;
+        }
+        
+        .models-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 32px;
-            margin-top: 40px;
+            gap: 24px;
         }
         
-        @media (max-width: 1024px) {
-            .cards-grid {
-                grid-template-columns: 1fr;
-                max-width: 500px;
-                margin: 40px auto 0;
-            }
-        }
-        
-        /* Model Card */
         .model-card {
-            position: relative;
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 24px;
-            padding: 40px 32px;
+            border-radius: 16px;
+            padding: 32px;
             text-decoration: none;
             color: inherit;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            overflow: hidden;
+            transition: all 0.3s;
             display: flex;
             flex-direction: column;
-            min-height: 400px;
-        }
-        
-        .model-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: var(--card-gradient);
-            transform: scaleX(0);
-            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
         .model-card:hover {
-            transform: translateY(-8px);
+            transform: translateY(-4px);
             border-color: transparent;
-            box-shadow: 0 32px 64px rgba(0, 0, 0, 0.4);
-        }
-        
-        .model-card:hover::before {
-            transform: scaleX(1);
-        }
-        
-        .model-card.vermind {
-            --card-gradient: var(--gradient-1);
         }
         
         .model-card.vermind:hover {
-            box-shadow: 0 32px 64px rgba(99, 102, 241, 0.2);
-        }
-        
-        .model-card.vermind-v {
-            --card-gradient: var(--gradient-2);
+            box-shadow: 0 20px 40px rgba(99, 102, 241, 0.2);
+            border-color: rgba(99, 102, 241, 0.5);
         }
         
         .model-card.vermind-v:hover {
-            box-shadow: 0 32px 64px rgba(16, 185, 129, 0.2);
-        }
-        
-        .model-card.vermind-omini {
-            --card-gradient: var(--gradient-3);
+            box-shadow: 0 20px 40px rgba(16, 185, 129, 0.2);
+            border-color: rgba(16, 185, 129, 0.5);
         }
         
         .model-card.vermind-omini:hover {
-            box-shadow: 0 32px 64px rgba(245, 158, 11, 0.2);
-        }
-        
-        /* Card Glow Effect */
-        .card-glow {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 200px;
-            height: 200px;
-            background: var(--card-gradient);
-            border-radius: 50%;
-            filter: blur(100px);
-            opacity: 0;
-            transform: translate(-50%, -50%);
-            transition: opacity 0.4s;
-            pointer-events: none;
-        }
-        
-        .model-card:hover .card-glow {
-            opacity: 0.15;
-        }
-        
-        /* Card Content */
-        .card-icon {
-            width: 64px;
-            height: 64px;
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            margin-bottom: 24px;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .vermind .card-icon {
-            background: rgba(99, 102, 241, 0.15);
-        }
-        
-        .vermind-v .card-icon {
-            background: rgba(16, 185, 129, 0.15);
-        }
-        
-        .vermind-omini .card-icon {
-            background: rgba(245, 158, 11, 0.15);
+            box-shadow: 0 20px 40px rgba(245, 158, 11, 0.2);
+            border-color: rgba(245, 158, 11, 0.5);
         }
         
         .card-badge {
-            position: absolute;
-            top: 24px;
-            right: 24px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
             padding: 6px 12px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--border);
             border-radius: 20px;
             font-size: 0.75rem;
-            font-weight: 500;
-            letter-spacing: 0.05em;
+            font-weight: 600;
             text-transform: uppercase;
-            color: var(--text-secondary);
+            letter-spacing: 0.05em;
+            margin-bottom: 20px;
+            width: fit-content;
+        }
+        
+        .vermind .card-badge {
+            background: rgba(99, 102, 241, 0.15);
+            color: #818cf8;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+        }
+        
+        .vermind-v .card-badge {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        
+        .vermind-omini .card-badge {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+        
+        .card-icon {
+            font-size: 2.5rem;
+            margin-bottom: 16px;
         }
         
         .card-title {
-            font-family: 'Syne', sans-serif;
-            font-size: 2rem;
+            font-size: 1.5rem;
             font-weight: 700;
-            margin-bottom: 12px;
-            position: relative;
-            z-index: 1;
+            margin-bottom: 8px;
+        }
+        
+        .vermind .card-title {
+            color: #818cf8;
+        }
+        
+        .vermind-v .card-title {
+            color: #34d399;
+        }
+        
+        .vermind-omini .card-title {
+            color: #fbbf24;
         }
         
         .card-tagline {
             font-size: 1rem;
             color: var(--text-secondary);
-            margin-bottom: 24px;
-            position: relative;
-            z-index: 1;
+            margin-bottom: 16px;
+            font-weight: 500;
         }
         
         .card-description {
             font-size: 0.95rem;
-            line-height: 1.7;
             color: var(--text-secondary);
-            margin-bottom: 32px;
+            line-height: 1.6;
+            margin-bottom: 24px;
             flex-grow: 1;
-            position: relative;
-            z-index: 1;
         }
         
         .card-features {
             list-style: none;
-            margin-bottom: 32px;
-            position: relative;
-            z-index: 1;
+            margin-bottom: 24px;
         }
         
         .card-features li {
@@ -339,45 +246,52 @@
             gap: 10px;
             font-size: 0.9rem;
             color: var(--text-secondary);
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
         
         .card-features li::before {
-            content: '→';
-            color: var(--primary);
-            font-weight: 600;
+            content: '✓';
+            font-weight: 700;
+        }
+        
+        .vermind .card-features li::before {
+            color: #818cf8;
         }
         
         .vermind-v .card-features li::before {
-            color: var(--secondary);
+            color: #34d399;
         }
         
         .vermind-omini .card-features li::before {
-            color: var(--accent);
+            color: #fbbf24;
         }
         
         .card-cta {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding-top: 24px;
+            padding-top: 20px;
             border-top: 1px solid var(--border);
             font-weight: 600;
-            position: relative;
-            z-index: 1;
+            font-size: 0.95rem;
         }
         
-        .card-cta span {
-            background: var(--card-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+        .vermind .card-cta {
+            color: #818cf8;
+        }
+        
+        .vermind-v .card-cta {
+            color: #34d399;
+        }
+        
+        .vermind-omini .card-cta {
+            color: #fbbf24;
         }
         
         .card-cta svg {
-            width: 20px;
-            height: 20px;
-            transition: transform 0.3s;
+            width: 18px;
+            height: 18px;
+            transition: transform 0.2s;
         }
         
         .model-card:hover .card-cta svg {
@@ -385,153 +299,137 @@
         }
         
         /* Footer */
-        .footer {
-            margin-top: 80px;
-            text-align: center;
-            padding-top: 40px;
+        footer {
+            padding: 40px 0;
             border-top: 1px solid var(--border);
+            text-align: center;
         }
         
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 32px;
-            margin-bottom: 24px;
-        }
-        
-        .footer-links a {
+        footer p {
             color: var(--text-secondary);
-            text-decoration: none;
             font-size: 0.9rem;
-            transition: color 0.2s;
-        }
-        
-        .footer-links a:hover {
-            color: var(--text-primary);
-        }
-        
-        .footer-copy {
-            color: var(--text-secondary);
-            font-size: 0.85rem;
         }
         
         /* Responsive */
+        @media (max-width: 1024px) {
+            .models-grid {
+                grid-template-columns: 1fr;
+                max-width: 500px;
+                margin: 0 auto;
+            }
+        }
+        
         @media (max-width: 768px) {
-            .container {
-                padding: 40px 20px;
+            .hero {
+                padding: 120px 0 60px;
             }
             
-            .header {
-                margin-bottom: 60px;
+            .hero h1 {
+                font-size: 2rem;
             }
             
-            .model-card {
-                padding: 32px 24px;
-                min-height: auto;
-            }
-            
-            .card-title {
-                font-size: 1.75rem;
-            }
-            
-            .footer-links {
-                flex-wrap: wrap;
-                gap: 16px 32px;
+            .hero-logo {
+                width: 80px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="bg-animation">
-        <div class="bg-grid"></div>
-        <div class="orb orb-1"></div>
-        <div class="orb orb-2"></div>
-        <div class="orb orb-3"></div>
-    </div>
-
-    <div class="container">
-        <header class="header">
-            <div class="brand">Model Family</div>
-            <h1 class="title">VerMind</h1>
-            <p class="subtitle">Choose your model variant. Each optimized for different use cases, from pure language understanding to multimodal reasoning.</p>
-        </header>
-
-        <div class="cards-grid">
-            <!-- VerMind Card -->
-            <a href="vermind.html" class="model-card vermind">
-                <div class="card-glow"></div>
-                <div class="card-icon">🧠</div>
-                <span class="card-badge">Language</span>
-                <h2 class="card-title">VerMind</h2>
-                <p class="card-tagline">Foundation Language Model</p>
-                <p class="card-description">A high-performance decoder-only transformer with GQA, SwiGLU, and RoPE. Optimized for efficient training and inference on language tasks.</p>
-                <ul class="card-features">
-                    <li>Grouped Query Attention</li>
-                    <li>Up to 32K context length</li>
-                    <li>DPO, PPO, GRPO support</li>
-                    <li>LoRA fine-tuning ready</li>
-                </ul>
-                <div class="card-cta">
-                    <span>Explore VerMind</span>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M5 12h14M12 5l7 7-7 7"/>
-                    </svg>
-                </div>
+    <nav>
+        <div class="container">
+            <a href="index.html" class="logo">
+                <img src="https://raw.githubusercontent.com/nev8rz/vermind/main/docs/assets/vermind_logo.png" alt="VerMind">
             </a>
-
-            <!-- VerMind-V Card -->
-            <a href="vermind-v.html" class="model-card vermind-v">
-                <div class="card-glow"></div>
-                <div class="card-icon">👁️</div>
-                <span class="card-badge">Vision + Language</span>
-                <h2 class="card-title">VerMind-V</h2>
-                <p class="card-tagline">Vision-Language Model</p>
-                <p class="card-description">Multimodal extension of VerMind with vision encoder integration. Understand and reason about images alongside text.</p>
-                <ul class="card-features">
-                    <li>CLIP/SigLIP vision encoder</li>
-                    <li>Image captioning & VQA</li>
-                    <li>Visual reasoning tasks</li>
-                    <li>Unified architecture</li>
-                </ul>
-                <div class="card-cta">
-                    <span>Explore VerMind-V</span>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M5 12h14M12 5l7 7-7 7"/>
-                    </svg>
-                </div>
-            </a>
-
-            <!-- VerMind-OMini Card -->
-            <a href="vermind-omini.html" class="model-card vermind-omini">
-                <div class="card-glow"></div>
-                <div class="card-icon">⚡</div>
-                <span class="card-badge">Edge</span>
-                <h2 class="card-title">VerMind-OMini</h2>
-                <p class="card-tagline">Lightweight On-Device Model</p>
-                <p class="card-description">Ultra-compact variant designed for edge deployment. Bring AI capabilities to mobile devices and embedded systems.</p>
-                <ul class="card-features">
-                    <li>&lt; 100M parameters</li>
-                    <li>Quantization optimized</li>
-                    <li>Fast inference on CPU</li>
-                    <li>Battery-efficient</li>
-                </ul>
-                <div class="card-cta">
-                    <span>Explore OMini</span>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M5 12h14M12 5l7 7-7 7"/>
-                    </svg>
-                </div>
+            <a href="https://github.com/nev8rz/vermind" class="github-btn" target="_blank">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                GitHub
             </a>
         </div>
+    </nav>
 
-        <footer class="footer">
-            <div class="footer-links">
-                <a href="https://github.com/nev8rz/vermind" target="_blank">GitHub</a>
-                <a href="https://github.com/nev8rz/vermind/issues" target="_blank">Issues</a>
-                <a href="https://github.com/nev8rz/vermind/blob/main/LICENSE" target="_blank">License</a>
+    <section class="hero">
+        <div class="container">
+            <img src="https://raw.githubusercontent.com/nev8rz/vermind/main/docs/assets/vermind_logo.png" alt="VerMind" class="hero-logo">
+            <h1>VerMind Family</h1>
+            <p class="hero-subtitle">Choose your model variant. Each optimized for different use cases, from pure language understanding to multimodal reasoning and edge deployment.</p>
+        </div>
+    </section>
+
+    <section class="models-section">
+        <div class="container">
+            <div class="models-grid">
+                <!-- VerMind Card -->
+                <a href="vermind.html" class="model-card vermind">
+                    <span class="card-badge">🧠 Language</span>
+                    <div class="card-icon">🧠</div>
+                    <h2 class="card-title">VerMind</h2>
+                    <p class="card-tagline">Foundation Language Model</p>
+                    <p class="card-description">A high-performance decoder-only transformer with GQA, SwiGLU, and RoPE. Optimized for efficient training and inference on language tasks.</p>
+                    <ul class="card-features">
+                        <li>Grouped Query Attention</li>
+                        <li>Up to 32K context length</li>
+                        <li>DPO, PPO, GRPO support</li>
+                        <li>LoRA fine-tuning ready</li>
+                    </ul>
+                    <div class="card-cta">
+                        <span>Explore VerMind</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </div>
+                </a>
+
+                <!-- VerMind-V Card -->
+                <a href="vermind-v.html" class="model-card vermind-v">
+                    <span class="card-badge">👁️ Vision + Language</span>
+                    <div class="card-icon">👁️</div>
+                    <h2 class="card-title">VerMind-V</h2>
+                    <p class="card-tagline">Vision-Language Model</p>
+                    <p class="card-description">Multimodal extension of VerMind with vision encoder integration. Understand and reason about images alongside text.</p>
+                    <ul class="card-features">
+                        <li>CLIP/SigLIP vision encoder</li>
+                        <li>Image captioning & VQA</li>
+                        <li>Visual reasoning tasks</li>
+                        <li>Unified architecture</li>
+                    </ul>
+                    <div class="card-cta">
+                        <span>Explore VerMind-V</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </div>
+                </a>
+
+                <!-- VerMind-OMini Card -->
+                <a href="vermind-omini.html" class="model-card vermind-omini">
+                    <span class="card-badge">⚡ Edge</span>
+                    <div class="card-icon">⚡</div>
+                    <h2 class="card-title">VerMind-OMini</h2>
+                    <p class="card-tagline">Lightweight On-Device Model</p>
+                    <p class="card-description">Ultra-compact variant designed for edge deployment. Bring AI capabilities to mobile devices and embedded systems.</p>
+                    <ul class="card-features">
+                        <li>&lt; 100M parameters</li>
+                        <li>Quantization optimized</li>
+                        <li>Fast inference on CPU</li>
+                        <li>Battery-efficient</li>
+                    </ul>
+                    <div class="card-cta">
+                        <span>Explore OMini</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </div>
+                </a>
             </div>
-            <p class="footer-copy">© 2026 VerMind. Open source under MIT License.</p>
-        </footer>
-    </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>© 2026 VerMind. Open source under MIT License.</p>
+        </div>
+    </footer>
 </body>
 </html>

@@ -7,19 +7,19 @@
     <meta name="description" content="VerMind-OMini is an ultra-compact variant designed for edge deployment, bringing AI to mobile and embedded devices.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: #f59e0b;
             --primary-dark: #d97706;
             --secondary: #ef4444;
-            --bg-dark: #0f0a0a;
-            --bg-card: #1a1313;
-            --text-primary: #fafafa;
-            --text-secondary: #a1a1aa;
-            --border: #2d1f1f;
-            --gradient-1: linear-gradient(135deg, #f59e0b 0%, #ef4444 50%, #f97316 100%);
-            --gradient-2: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+            --gradient-1: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+            --gradient-2: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
         }
         
         * {
@@ -33,75 +33,13 @@
         }
         
         body {
-            font-family: 'Space Grotesk', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg-dark);
             color: var(--text-primary);
             line-height: 1.6;
         }
         
-        /* Background */
-        .bg-animation {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 0;
-            overflow: hidden;
-        }
-        
-        .bg-grid {
-            position: absolute;
-            width: 200%;
-            height: 200%;
-            top: -50%;
-            left: -50%;
-            background-image: 
-                linear-gradient(rgba(245, 158, 11, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(245, 158, 11, 0.03) 1px, transparent 1px);
-            background-size: 60px 60px;
-            animation: gridMove 20s linear infinite;
-        }
-        
-        @keyframes gridMove {
-            0% { transform: translate(0, 0); }
-            100% { transform: translate(60px, 60px); }
-        }
-        
-        .orb {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(100px);
-            opacity: 0.3;
-            animation: float 15s ease-in-out infinite;
-        }
-        
-        .orb-1 {
-            width: 500px;
-            height: 500px;
-            background: var(--primary);
-            top: -150px;
-            left: -150px;
-        }
-        
-        .orb-2 {
-            width: 400px;
-            height: 400px;
-            background: var(--secondary);
-            bottom: -100px;
-            right: -100px;
-            animation-delay: -5s;
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            50% { transform: translate(-30px, 30px) scale(1.1); }
-        }
-        
         .container {
-            position: relative;
-            z-index: 1;
             max-width: 1200px;
             margin: 0 auto;
             padding: 0 24px;
@@ -113,7 +51,7 @@
             top: 0;
             left: 0;
             right: 0;
-            background: rgba(15, 10, 10, 0.9);
+            background: rgba(15, 23, 42, 0.9);
             backdrop-filter: blur(10px);
             border-bottom: 1px solid var(--border);
             z-index: 1000;
@@ -127,25 +65,12 @@
         }
         
         .logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-family: 'Syne', sans-serif;
             font-size: 1.5rem;
             font-weight: 700;
-            text-decoration: none;
-            color: var(--text-primary);
-        }
-        
-        .logo-icon {
-            width: 40px;
-            height: 40px;
             background: var(--gradient-1);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.25rem;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         
         .nav-links {
@@ -164,7 +89,37 @@
         }
         
         .nav-links a:hover {
-            color: var(--primary);
+            color: var(--text-primary);
+        }
+        
+        .lang-switch {
+            display: flex;
+            gap: 4px;
+            padding: 4px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        
+        .lang-btn {
+            padding: 6px 12px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        
+        .lang-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .lang-btn:hover:not(.active) {
+            color: var(--text-primary);
         }
         
         .back-link {
@@ -187,10 +142,33 @@
             color: var(--text-primary);
         }
         
-        /* Hero */
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 8px;
+        }
+        
+        /* Hero Section */
         .hero {
             padding: 160px 0 100px;
             text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(245, 158, 11, 0.15) 0%, transparent 70%);
+            pointer-events: none;
         }
         
         .hero-badge {
@@ -205,17 +183,20 @@
             font-weight: 500;
             color: var(--primary);
             margin-bottom: 32px;
+            position: relative;
+            z-index: 1;
         }
         
         .hero h1 {
-            font-family: 'Syne', sans-serif;
-            font-size: clamp(3rem, 6vw, 5rem);
-            font-weight: 800;
-            margin-bottom: 24px;
+            font-size: 4rem;
+            font-weight: 700;
+            margin-bottom: 16px;
             background: var(--gradient-1);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            position: relative;
+            z-index: 1;
         }
         
         .hero-tagline {
@@ -223,6 +204,8 @@
             color: var(--primary);
             font-weight: 600;
             margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
         }
         
         .hero-description {
@@ -231,6 +214,8 @@
             max-width: 700px;
             margin: 0 auto 40px;
             line-height: 1.7;
+            position: relative;
+            z-index: 1;
         }
         
         .hero-stats {
@@ -239,6 +224,8 @@
             gap: 48px;
             margin-bottom: 40px;
             flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
         }
         
         .stat-item {
@@ -246,7 +233,6 @@
         }
         
         .stat-value {
-            font-family: 'Syne', sans-serif;
             font-size: 2.5rem;
             font-weight: 700;
             background: var(--gradient-1);
@@ -265,6 +251,8 @@
             gap: 16px;
             justify-content: center;
             flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
         }
         
         .btn {
@@ -298,14 +286,13 @@
             background: var(--border);
         }
         
-        /* Features */
+        /* Features Section */
         .features {
             padding: 100px 0;
         }
         
         .section-title {
             text-align: center;
-            font-family: 'Syne', sans-serif;
             font-size: 2.5rem;
             font-weight: 700;
             margin-bottom: 16px;
@@ -341,7 +328,7 @@
         .feature-icon {
             width: 48px;
             height: 48px;
-            background: rgba(245, 158, 11, 0.15);
+            background: var(--gradient-1);
             border-radius: 12px;
             display: flex;
             align-items: center;
@@ -361,10 +348,10 @@
             line-height: 1.6;
         }
         
-        /* Comparison */
+        /* Comparison Section */
         .comparison {
             padding: 100px 0;
-            background: linear-gradient(180deg, transparent 0%, rgba(26, 19, 19, 0.5) 50%, transparent 100%);
+            background: linear-gradient(180deg, transparent 0%, rgba(30, 41, 59, 0.5) 50%, transparent 100%);
         }
         
         .comp-table {
@@ -414,7 +401,7 @@
             font-weight: 700;
         }
         
-        /* Use Cases */
+        /* Use Cases Section */
         .usecases {
             padding: 100px 0;
         }
@@ -439,12 +426,19 @@
         }
         
         .usecase-icon {
-            font-size: 2.5rem;
+            width: 48px;
+            height: 48px;
+            background: var(--gradient-1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             margin-bottom: 20px;
+            font-size: 1.5rem;
         }
         
         .usecase-card h3 {
-            font-size: 1.3rem;
+            font-size: 1.2rem;
             margin-bottom: 12px;
         }
         
@@ -454,7 +448,7 @@
             line-height: 1.6;
         }
         
-        /* Quick Start */
+        /* Quick Start Section */
         .quickstart {
             padding: 100px 0;
         }
@@ -538,14 +532,29 @@
             color: var(--primary);
         }
         
+        /* Language content */
+        [data-lang="zh"] { display: none; }
+        body.zh [data-lang="en"] { display: none; }
+        body.zh [data-lang="zh"] { display: block; }
+        body.zh span[data-lang="zh"],
+        body.zh a[data-lang="zh"] { display: inline; }
+        
         /* Responsive */
         @media (max-width: 768px) {
             .hero {
-                padding: 140px 0 80px;
+                padding: 120px 0 80px;
             }
             
             .hero h1 {
                 font-size: 2.5rem;
+            }
+            
+            .hero-tagline {
+                font-size: 1.2rem;
+            }
+            
+            .hero-description {
+                font-size: 1rem;
             }
             
             .hero-stats {
@@ -556,40 +565,97 @@
                 font-size: 2rem;
             }
             
-            .nav-links {
-                display: none;
-            }
-            
             .section-title {
                 font-size: 2rem;
+            }
+            
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: var(--bg-card);
+                flex-direction: column;
+                padding: 20px;
+                gap: 16px;
+                border-bottom: 1px solid var(--border);
+            }
+            
+            .nav-links.active {
+                display: flex;
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+            }
+            
+            .features-grid,
+            .usecases-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .comp-table {
+                overflow-x: auto;
+            }
+            
+            .comp-table table {
+                min-width: 500px;
+            }
+            
+            .btn {
+                padding: 12px 20px;
+                font-size: 0.95rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+            
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 280px;
+                justify-content: center;
             }
         }
     </style>
 </head>
 <body>
-    <div class="bg-animation">
-        <div class="bg-grid"></div>
-        <div class="orb orb-1"></div>
-        <div class="orb orb-2"></div>
-    </div>
-
     <nav>
         <div class="container">
-            <a href="index.html" class="logo">
-                <div class="logo-icon">⚡</div>
-                <span>VerMind-OMini</span>
-            </a>
-            <ul class="nav-links">
-                <li><a href="#features">Features</a></li>
-                <li><a href="#comparison">Comparison</a></li>
-                <li><a href="#usecases">Use Cases</a></li>
-                <li><a href="#quickstart">Quick Start</a></li>
+            <div class="logo">VerMind-OMini</div>
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="#features" data-lang="en">Features</a><a href="#features" data-lang="zh">功能</a></li>
+                <li><a href="#comparison" data-lang="en">Comparison</a><a href="#comparison" data-lang="zh">对比</a></li>
+                <li><a href="#usecases" data-lang="en">Use Cases</a><a href="#usecases" data-lang="zh">应用场景</a></li>
+                <li><a href="#quickstart" data-lang="en">Quick Start</a><a href="#quickstart" data-lang="zh">快速开始</a></li>
+                <li>
+                    <div class="lang-switch">
+                        <button class="lang-btn active" data-lang-switch="en">EN</button>
+                        <button class="lang-btn" data-lang-switch="zh">中文</button>
+                    </div>
+                </li>
             </ul>
             <a href="index.html" class="back-link">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
                 </svg>
-                All Models
+                <span data-lang="en">Back to Models</span>
+                <span data-lang="zh">返回模型列表</span>
             </a>
         </div>
     </nav>
@@ -598,24 +664,30 @@
         <div class="container">
             <div class="hero-badge">
                 <span>⚡</span>
-                Edge AI Optimized
+                <span data-lang="en">Edge AI Optimized</span>
+                <span data-lang="zh">边缘 AI 优化</span>
             </div>
             <h1>VerMind-OMini</h1>
-            <p class="hero-tagline">Small · Fast · Everywhere</p>
-            <p class="hero-description">An ultra-compact variant of VerMind designed specifically for edge deployment. Bring powerful AI capabilities to mobile devices, IoT, and embedded systems without compromising on speed or efficiency.</p>
+            <p class="hero-tagline" data-lang="en">Small · Fast · Everywhere</p>
+            <p class="hero-tagline" data-lang="zh">小巧 · 快速 · 无处不在</p>
+            <p class="hero-description" data-lang="en">An ultra-compact variant of VerMind designed specifically for edge deployment. Bring powerful AI capabilities to mobile devices, IoT, and embedded systems without compromising on speed or efficiency.</p>
+            <p class="hero-description" data-lang="zh">专为边缘部署设计的 VerMind 超紧凑版本。将强大的 AI 能力带到移动设备、物联网和嵌入式系统，同时不牺牲速度或效率。</p>
             
             <div class="hero-stats">
                 <div class="stat-item">
                     <div class="stat-value">&lt;100M</div>
-                    <div class="stat-label">Parameters</div>
+                    <div class="stat-label" data-lang="en">Parameters</div>
+                    <div class="stat-label" data-lang="zh">参数量</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-value">5x</div>
-                    <div class="stat-label">Faster</div>
+                    <div class="stat-label" data-lang="en">Faster</div>
+                    <div class="stat-label" data-lang="zh">更快</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-value">10x</div>
-                    <div class="stat-label">Smaller</div>
+                    <div class="stat-label" data-lang="en">Smaller</div>
+                    <div class="stat-label" data-lang="zh">更小</div>
                 </div>
             </div>
             
@@ -624,48 +696,66 @@
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
                     </svg>
-                    View on GitHub
+                    <span data-lang="en">View on GitHub</span>
+                    <span data-lang="zh">在 GitHub 上查看</span>
                 </a>
-                <a href="#quickstart" class="btn btn-secondary">Get Started</a>
+                <a href="#quickstart" class="btn btn-secondary">
+                    <span data-lang="en">Get Started</span>
+                    <span data-lang="zh">快速开始</span>
+                </a>
             </div>
         </div>
     </section>
 
     <section class="features" id="features">
         <div class="container">
-            <h2 class="section-title">Edge-First Features</h2>
-            <p class="section-subtitle">Optimized for deployment on resource-constrained devices</p>
+            <h2 class="section-title" data-lang="en">Edge-First Features</h2>
+            <h2 class="section-title" data-lang="zh">边缘优先功能</h2>
+            <p class="section-subtitle" data-lang="en">Optimized for deployment on resource-constrained devices</p>
+            <p class="section-subtitle" data-lang="zh">针对资源受限设备部署进行优化</p>
             
             <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-icon">📱</div>
-                    <h3>Mobile-Ready</h3>
-                    <p>Run inference on smartphones and tablets with minimal latency and battery impact.</p>
+                    <h3 data-lang="en">Mobile-Ready</h3>
+                    <h3 data-lang="zh">移动就绪</h3>
+                    <p data-lang="en">Run inference on smartphones and tablets with minimal latency and battery impact.</p>
+                    <p data-lang="zh">在智能手机和平板电脑上运行推理，延迟低、耗电少。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🔋</div>
-                    <h3>Battery Efficient</h3>
-                    <p>Optimized architecture reduces power consumption for all-day operation on mobile devices.</p>
+                    <h3 data-lang="en">Battery Efficient</h3>
+                    <h3 data-lang="zh">电池高效</h3>
+                    <p data-lang="en">Optimized architecture reduces power consumption for all-day operation on mobile devices.</p>
+                    <p data-lang="zh">优化的架构降低功耗，支持移动设备全天运行。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🚀</div>
-                    <h3>CPU Inference</h3>
-                    <p>Fast inference on CPU without requiring GPU acceleration, perfect for edge devices.</p>
+                    <h3 data-lang="en">CPU Inference</h3>
+                    <h3 data-lang="zh">CPU 推理</h3>
+                    <p data-lang="en">Fast inference on CPU without requiring GPU acceleration, perfect for edge devices.</p>
+                    <p data-lang="zh">无需 GPU 加速即可在 CPU 上快速推理，非常适合边缘设备。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">📦</div>
-                    <h3>Quantization Optimized</h3>
-                    <p>INT8 and INT4 quantization support reduces model size by up to 75% with minimal accuracy loss.</p>
+                    <h3 data-lang="en">Quantization Optimized</h3>
+                    <h3 data-lang="zh">量化优化</h3>
+                    <p data-lang="en">INT8 and INT4 quantization support reduces model size by up to 75% with minimal accuracy loss.</p>
+                    <p data-lang="zh">支持 INT8 和 INT4 量化，模型大小减少高达 75%，精度损失极小。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🌐</div>
-                    <h3>ONNX Export</h3>
-                    <p>Export to ONNX format for deployment across diverse hardware platforms and frameworks.</p>
+                    <h3 data-lang="en">ONNX Export</h3>
+                    <h3 data-lang="zh">ONNX 导出</h3>
+                    <p data-lang="en">Export to ONNX format for deployment across diverse hardware platforms and frameworks.</p>
+                    <p data-lang="zh">导出为 ONNX 格式，支持跨多种硬件平台和框架部署。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🔒</div>
-                    <h3>Private & Local</h3>
-                    <p>Keep data on-device for privacy-sensitive applications. No cloud required.</p>
+                    <h3 data-lang="en">Private & Local</h3>
+                    <h3 data-lang="zh">隐私与本地</h3>
+                    <p data-lang="en">Keep data on-device for privacy-sensitive applications. No cloud required.</p>
+                    <p data-lang="zh">数据保留在设备上，适用于隐私敏感型应用。无需云端。</p>
                 </div>
             </div>
         </div>
@@ -673,51 +763,64 @@
 
     <section class="comparison" id="comparison">
         <div class="container">
-            <h2 class="section-title">How It Compares</h2>
-            <p class="section-subtitle">VerMind-OMini vs standard VerMind</p>
+            <h2 class="section-title" data-lang="en">How It Compares</h2>
+            <h2 class="section-title" data-lang="zh">对比</h2>
+            <p class="section-subtitle" data-lang="en">VerMind-OMini vs standard VerMind</p>
+            <p class="section-subtitle" data-lang="zh">VerMind-OMini 与标准 VerMind 对比</p>
             
             <div class="comp-table">
                 <table>
                     <thead>
                         <tr>
-                            <th>Feature</th>
+                            <th data-lang="en">Feature</th>
+                            <th data-lang="zh">特性</th>
                             <th>VerMind</th>
                             <th>VerMind-OMini</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td>Parameters</td>
+                            <td data-lang="en">Parameters</td>
+                            <td data-lang="zh">参数量</td>
                             <td>~104M</td>
                             <td>&lt; 100M</td>
                         </tr>
                         <tr>
-                            <td>Model Size (FP16)</td>
+                            <td data-lang="en">Model Size (FP16)</td>
+                            <td data-lang="zh">模型大小 (FP16)</td>
                             <td>~200MB</td>
                             <td>~180MB</td>
                         </tr>
                         <tr>
-                            <td>Quantized (INT8)</td>
+                            <td data-lang="en">Quantized (INT8)</td>
+                            <td data-lang="zh">量化后 (INT8)</td>
                             <td>~100MB</td>
                             <td>~90MB</td>
                         </tr>
                         <tr>
-                            <td>CPU Inference</td>
-                            <td>Supported</td>
-                            <td><span class="check">Optimized</span></td>
+                            <td data-lang="en">CPU Inference</td>
+                            <td data-lang="zh">CPU 推理</td>
+                            <td data-lang="en">Supported</td>
+                            <td data-lang="zh">支持</td>
+                            <td><span class="check" data-lang="en">Optimized</span><span class="check" data-lang="zh">优化</span></td>
                         </tr>
                         <tr>
-                            <td>Mobile Deployment</td>
-                            <td>Possible</td>
-                            <td><span class="check">Designed for</span></td>
+                            <td data-lang="en">Mobile Deployment</td>
+                            <td data-lang="zh">移动部署</td>
+                            <td data-lang="en">Possible</td>
+                            <td data-lang="zh">可行</td>
+                            <td><span class="check" data-lang="en">Designed for</span><span class="check" data-lang="zh">专为设计</span></td>
                         </tr>
                         <tr>
-                            <td>Battery Efficiency</td>
-                            <td>Standard</td>
-                            <td><span class="check">High</span></td>
+                            <td data-lang="en">Battery Efficiency</td>
+                            <td data-lang="zh">电池效率</td>
+                            <td data-lang="en">Standard</td>
+                            <td data-lang="zh">标准</td>
+                            <td><span class="check" data-lang="en">High</span><span class="check" data-lang="zh">高</span></td>
                         </tr>
                         <tr>
-                            <td>Context Length</td>
+                            <td data-lang="en">Context Length</td>
+                            <td data-lang="zh">上下文长度</td>
                             <td>2K / 32K</td>
                             <td>2K / 8K</td>
                         </tr>
@@ -729,39 +832,53 @@
 
     <section class="usecases" id="usecases">
         <div class="container">
-            <h2 class="section-title">Use Cases</h2>
-            <p class="section-subtitle">Perfect for on-device AI applications</p>
+            <h2 class="section-title" data-lang="en">Use Cases</h2>
+            <h2 class="section-title" data-lang="zh">应用场景</h2>
+            <p class="section-subtitle" data-lang="en">Perfect for on-device AI applications</p>
+            <p class="section-subtitle" data-lang="zh">完美适用于设备端 AI 应用</p>
             
             <div class="usecases-grid">
                 <div class="usecase-card">
                     <div class="usecase-icon">💬</div>
-                    <h3>On-Device Chat</h3>
-                    <p>Private conversational AI that runs entirely on the user's device. No data leaves the phone, ensuring complete privacy.</p>
+                    <h3 data-lang="en">On-Device Chat</h3>
+                    <h3 data-lang="zh">设备端聊天</h3>
+                    <p data-lang="en">Private conversational AI that runs entirely on the user's device. No data leaves the phone, ensuring complete privacy.</p>
+                    <p data-lang="zh">完全在用户的设备上运行的私有对话 AI。数据不会离开手机，确保完全隐私。</p>
                 </div>
                 <div class="usecase-card">
                     <div class="usecase-icon">✍️</div>
-                    <h3>Smart Keyboard</h3>
-                    <p>Intelligent text suggestions, grammar correction, and smart replies built directly into mobile keyboards.</p>
+                    <h3 data-lang="en">Smart Keyboard</h3>
+                    <h3 data-lang="zh">智能键盘</h3>
+                    <p data-lang="en">Intelligent text suggestions, grammar correction, and smart replies built directly into mobile keyboards.</p>
+                    <p data-lang="zh">直接内置在移动键盘中的智能文本建议、语法纠正和智能回复。</p>
                 </div>
                 <div class="usecase-card">
                     <div class="usecase-icon">🏠</div>
-                    <h3>Smart Home Control</h3>
-                    <p>Voice-activated home automation that works offline, responding instantly to commands without cloud latency.</p>
+                    <h3 data-lang="en">Smart Home Control</h3>
+                    <h3 data-lang="zh">智能家居控制</h3>
+                    <p data-lang="en">Voice-activated home automation that works offline, responding instantly to commands without cloud latency.</p>
+                    <p data-lang="zh">离线工作的语音激活家庭自动化，即时响应命令，无需云端延迟。</p>
                 </div>
                 <div class="usecase-card">
                     <div class="usecase-icon">📚</div>
-                    <h3>Offline Learning</h3>
-                    <p>Educational AI tutoring that works without internet connectivity, perfect for remote areas or travel.</p>
+                    <h3 data-lang="en">Offline Learning</h3>
+                    <h3 data-lang="zh">离线学习</h3>
+                    <p data-lang="en">Educational AI tutoring that works without internet connectivity, perfect for remote areas or travel.</p>
+                    <p data-lang="zh">无需互联网连接即可工作的教育 AI 辅导，非常适合偏远地区或旅行使用。</p>
                 </div>
                 <div class="usecase-card">
                     <div class="usecase-icon">🏭</div>
-                    <h3>Industrial IoT</h3>
-                    <p>Local data analysis and decision-making for industrial sensors and equipment monitoring.</p>
+                    <h3 data-lang="en">Industrial IoT</h3>
+                    <h3 data-lang="zh">工业物联网</h3>
+                    <p data-lang="en">Local data analysis and decision-making for industrial sensors and equipment monitoring.</p>
+                    <p data-lang="zh">用于工业传感器和设备监控的本地数据分析和决策。</p>
                 </div>
                 <div class="usecase-card">
                     <div class="usecase-icon">🚗</div>
-                    <h3>Automotive Edge</h3>
-                    <p>In-vehicle AI assistants and control systems that operate reliably without network dependency.</p>
+                    <h3 data-lang="en">Automotive Edge</h3>
+                    <h3 data-lang="zh">汽车边缘计算</h3>
+                    <p data-lang="en">In-vehicle AI assistants and control systems that operate reliably without network dependency.</p>
+                    <p data-lang="zh">车载 AI 助手和控制系统，无需依赖网络即可可靠运行。</p>
                 </div>
             </div>
         </div>
@@ -769,21 +886,25 @@
 
     <section class="quickstart" id="quickstart">
         <div class="container">
-            <h2 class="section-title">Quick Start</h2>
-            <p class="section-subtitle">Deploy VerMind-OMini on your edge device</p>
+            <h2 class="section-title" data-lang="en">Quick Start</h2>
+            <h2 class="section-title" data-lang="zh">快速开始</h2>
+            <p class="section-subtitle" data-lang="en">Deploy VerMind-OMini on your edge device</p>
+            <p class="section-subtitle" data-lang="zh">在您的边缘设备上部署 VerMind-OMini</p>
             
             <div class="quickstart-steps">
                 <div class="step">
                     <div class="step-header">
                         <div class="step-number">1</div>
-                        <h3>Install</h3>
+                        <h3 data-lang="en">Install</h3>
+                        <h3 data-lang="zh">安装</h3>
                     </div>
                     <code>pip install vermind-omini</code>
                 </div>
                 <div class="step">
                     <div class="step-header">
                         <div class="step-number">2</div>
-                        <h3>Load Quantized Model</h3>
+                        <h3 data-lang="en">Load Quantized Model</h3>
+                        <h3 data-lang="zh">加载量化模型</h3>
                     </div>
                     <code>from vermind_models import VerMindOMini
 
@@ -795,7 +916,8 @@ model = VerMindOMini.from_pretrained(
                 <div class="step">
                     <div class="step-header">
                         <div class="step-number">3</div>
-                        <h3>Export to ONNX (Optional)</h3>
+                        <h3 data-lang="en">Export to ONNX (Optional)</h3>
+                        <h3 data-lang="zh">导出为 ONNX（可选）</h3>
                     </div>
                     <code>python scripts/export_onnx.py \
     --model_path ./output/omini \
@@ -805,7 +927,8 @@ model = VerMindOMini.from_pretrained(
                 <div class="step">
                     <div class="step-header">
                         <div class="step-number">4</div>
-                        <h3>Deploy on Mobile</h3>
+                        <h3 data-lang="en">Deploy on Mobile</h3>
+                        <h3 data-lang="zh">部署到移动设备</h3>
                     </div>
                     <code># iOS (Core ML)
 python scripts/export_coreml.py --model_path ./output/omini
@@ -819,14 +942,48 @@ python scripts/export_tflite.py --model_path ./output/omini</code>
 
     <footer>
         <div class="container">
-            <p>VerMind-OMini is open source under the MIT License.</p>
+            <p data-lang="en">VerMind-OMini is open source under the MIT License.</p>
+            <p data-lang="zh">VerMind-OMini 基于 MIT 许可证开源。</p>
             <div class="links">
-                <a href="index.html">Model Family</a>
+                <a href="index.html" data-lang="en">Model Family</a>
+                <a href="index.html" data-lang="zh">模型系列</a>
                 <a href="https://github.com/nev8rz/vermind" target="_blank">GitHub</a>
-                <a href="https://github.com/nev8rz/vermind/issues" target="_blank">Issues</a>
-                <a href="https://github.com/nev8rz/vermind/blob/main/LICENSE" target="_blank">License</a>
+                <a href="https://github.com/nev8rz/vermind/issues" target="_blank" data-lang="en">Issues</a>
+                <a href="https://github.com/nev8rz/vermind/issues" target="_blank" data-lang="zh">问题反馈</a>
+                <a href="https://github.com/nev8rz/vermind/blob/main/LICENSE" target="_blank" data-lang="en">License</a>
+                <a href="https://github.com/nev8rz/vermind/blob/main/LICENSE" target="_blank" data-lang="zh">许可证</a>
             </div>
         </div>
     </footer>
+
+    <script>
+        // Language switching
+        const langBtns = document.querySelectorAll('[data-lang-switch]');
+        langBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const lang = btn.getAttribute('data-lang-switch');
+                langBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                if (lang === 'zh') {
+                    document.body.classList.add('zh');
+                } else {
+                    document.body.classList.remove('zh');
+                }
+            });
+        });
+
+        // Mobile menu toggle
+        function toggleMobileMenu() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('active');
+        }
+
+        // Close mobile menu when clicking on a link
+        document.querySelectorAll('.nav-links a').forEach(link => {
+            link.addEventListener('click', () => {
+                document.getElementById('navLinks').classList.remove('active');
+            });
+        });
+    </script>
 </body>
 </html>

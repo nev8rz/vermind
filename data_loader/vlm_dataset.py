@@ -74,6 +74,27 @@ class VLMDataset(Dataset):
             tokenize=False,
             add_generation_prompt=False
         )
+    
+    def insert_image_tokens(self, input_ids: list) -> list:
+        """
+        将 <image> 的 tokenizer 输出替换为 image_ids
+        """
+        # 获取 <image> 的 token id 序列
+        image_token_ids = self.tokenizer(self.image_special_token, add_special_tokens=False).input_ids
+        
+        new_input_ids = []
+        i = 0
+        while i < len(input_ids):
+            # 检查是否匹配 image_token_ids
+            if input_ids[i:i+len(image_token_ids)] == image_token_ids:
+                # 替换为 image_ids
+                new_input_ids.extend(self.image_ids)
+                i += len(image_token_ids)
+            else:
+                new_input_ids.append(input_ids[i])
+                i += 1
+        
+        return new_input_ids
 
     def generate_labels(self, input_ids: list) -> list:
         """
@@ -106,14 +127,18 @@ class VLMDataset(Dataset):
         prompt = self.create_chat_prompt(conversations)
         input_ids = self.tokenizer(prompt).input_ids[:self.max_length]
         
-        # 3. 填充到 max_length
+        # 3. 将 <image> token 替换为 image_ids
+        input_ids = self.insert_image_tokens(input_ids)
+        input_ids = input_ids[:self.max_length]  # 截断到 max_length
+        
+        # 4. 填充到 max_length
         pad_len = self.max_length - len(input_ids)
         input_ids += [self.tokenizer.pad_token_id] * pad_len
         
-        # 4. 生成 labels
+        # 5. 生成 labels
         labels = self.generate_labels(input_ids)
         
-        # 5. 处理图像 -> pixel_values
+        # 6. 处理图像 -> pixel_values
         image = Image.open(io.BytesIO(image_bytes))
         pixel_values = VerMindVLM.image2tensor(image, self.processor)
         

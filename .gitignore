@@ -17,6 +17,7 @@ AGENTS.md
 .windsurf
 studio.py
 internlm2-1_8b-reward
+Skywork-Reward-V2-Qwen3-4B
 
 # C extensions
 *.so

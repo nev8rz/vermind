@@ -19,7 +19,7 @@ class SFTDataset(Dataset):
         super().__init__()
         self.tokenizer = tokenizer
         self.max_length = max_length
-        self.samples = load_dataset('json', data_files=jsonl_path, split='train',streaming=True)
+        self.samples = load_dataset('json', data_files=jsonl_path, split='train')
         self.bos_id = tokenizer(f'{tokenizer.bos_token}assistant\n', add_special_tokens=False).input_ids
         self.eos_id = tokenizer(f'{tokenizer.eos_token}\n', add_special_tokens=False).input_ids
 

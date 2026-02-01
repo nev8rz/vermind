@@ -10,7 +10,7 @@ source .venv/bin/activate
 
 uv run python train/train_vlm.py \
     --stage pretrain \
-    --from_weight /root/vermind/output/pretrain/pretrain_768/checkpoint_10000 \
+    --from_weight /root/vermind/output/sft_packed/sft_packed_768_4/checkpoint_339044 \
     --data_path /root/vermind/dataset/vlm_pretrain.parquet \
     --save_dir /root/vermind/output/vlm_pretrain \
     --tokenizer_path /root/vermind/vermind_tokenizer \
@@ -18,8 +18,8 @@ uv run python train/train_vlm.py \
     --epochs 4 \
     --batch_size 64 \
     --accumulation_steps 8 \
-    --learning_rate 5e-4 \
-    --warmup_ratio 0.03 \
+    --learning_rate 6e-4 \
+    --warmup_ratio 0.01 \
     --max_seq_len 768 \
     --num_workers 8 \
     --save_interval 5000 \

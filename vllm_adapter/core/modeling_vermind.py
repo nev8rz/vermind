@@ -49,6 +49,9 @@ def apply_rotary_pos_emb(q, k, cos, sin, position_ids=None, unsqueeze_dim=1):
     def rotate_half(x):
         return torch.cat((-x[..., x.shape[-1] // 2:], x[..., : x.shape[-1] // 2]), dim=-1)
 
+    # 保存原始 dtype
+    orig_dtype = q.dtype
+
     if position_ids is not None:
         if position_ids.dim() == 1:
             pos_ids = position_ids
@@ -73,6 +76,9 @@ def apply_rotary_pos_emb(q, k, cos, sin, position_ids=None, unsqueeze_dim=1):
         q_embed = (q * cos_s) + (rotate_half(q) * sin_s)
         k_embed = (k * cos_s) + (rotate_half(k) * sin_s)
 
+    # 转回原始 dtype
+    q_embed = q_embed.to(orig_dtype)
+    k_embed = k_embed.to(orig_dtype)
     return q_embed, k_embed
 
 
@@ -141,7 +147,15 @@ class Attention(nn.Module):
     def forward(self, x, position_embeddings, past_key_value=None, use_cache=False,
                 attention_mask=None, position_ids=None, cu_seqlens=None):
         bsz, seq_len, _ = x.shape
+        # 获取权重的 dtype（模型加载时的 dtype）
+        weight_dtype = self.q_proj.weight.dtype
+        if x.dtype != weight_dtype:
+            x = x.to(weight_dtype)
         xq, xk, xv = self.q_proj(x), self.k_proj(x), self.v_proj(x)
+        # 强制统一为权重 dtype（防止不同 proj 层 dtype 不一致）
+        xq = xq.to(weight_dtype)
+        xk = xk.to(weight_dtype)
+        xv = xv.to(weight_dtype)
         xq = xq.view(bsz, seq_len, self.n_local_heads, self.head_dim)
         xk = xk.view(bsz, seq_len, self.n_local_kv_heads, self.head_dim)
         xv = xv.view(bsz, seq_len, self.n_local_kv_heads, self.head_dim)
@@ -157,14 +171,35 @@ class Attention(nn.Module):
         xq, xk, xv = xq.transpose(1, 2), repeat_kv(xk, self.n_rep).transpose(1, 2), repeat_kv(xv, self.n_rep).transpose(1, 2)
 
         is_2d_mask = attention_mask is not None and attention_mask.dim() == 3
-        use_flash = self.flash and (seq_len > 1) and (past_key_value is None)
+        attn_mask_for_flash = None
+        use_flash = False
         
-        if use_flash and (attention_mask is None or (not is_2d_mask and torch.all(attention_mask == 1))):
-            output = F.scaled_dot_product_attention(
-                xq, xk, xv,
-                dropout_p=self.dropout if self.training else 0.0,
-                is_causal=True
-            )
+        if self.flash and (seq_len > 1) and (past_key_value is None):
+            if attention_mask is None:
+                use_flash = True
+                attn_mask_for_flash = None
+            elif is_2d_mask:
+                use_flash = False
+            elif torch.all(attention_mask == 1):
+                use_flash = True
+                attn_mask_for_flash = None
+            else:
+                use_flash = False
+        
+        if use_flash:
+            if attn_mask_for_flash is not None:
+                output = F.scaled_dot_product_attention(
+                    xq, xk, xv,
+                    attn_mask=attn_mask_for_flash,
+                    dropout_p=self.dropout if self.training else 0.0,
+                    is_causal=False
+                )
+            else:
+                output = F.scaled_dot_product_attention(
+                    xq, xk, xv,
+                    dropout_p=self.dropout if self.training else 0.0,
+                    is_causal=True
+                )
         else:
             scores = (xq @ xk.transpose(-2, -1)) / math.sqrt(self.head_dim)
             if not is_2d_mask:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 VerMind-V 视觉语言模型推理与对话脚本
-支持本地推理和 vLLM API 两种模式
+支持本地推理和 vLLM API 两种模式，支持流式输出
 """
 
 import os
@@ -12,6 +12,7 @@ import warnings
 import base64
 from pathlib import Path
 from io import BytesIO
+from threading import Thread
 
 import torch
 from PIL import Image
@@ -67,8 +68,8 @@ def load_model_local(model_path, device='cuda'):
     return model, tokenizer
 
 
-def generate_response_local(model, tokenizer, image, prompt, max_length=512, temperature=0.7, device='cuda'):
-    """本地生成回复"""
+def generate_response_local(model, tokenizer, image, prompt, max_length=512, temperature=0.7, device='cuda', stream=False):
+    """本地生成回复，支持流式输出"""
     # 构建消息
     messages = [
         {"role": "user", "content": f"<image>\n{prompt}"}
@@ -89,37 +90,66 @@ def generate_response_local(model, tokenizer, image, prompt, max_length=512, tem
     pixel_values = model.image2tensor(image, model.processor)
     pixel_values = pixel_values.unsqueeze(0).to(device)
     
-    # 生成
-    with torch.no_grad():
-        output = model.generate(
-            input_ids=input_ids,
-            pixel_values=pixel_values,
-            max_new_tokens=max_length,
-            temperature=temperature,
-            do_sample=True,
-            top_p=0.85,
-            pad_token_id=tokenizer.pad_token_id,
-            eos_token_id=tokenizer.eos_token_id
-        )
-    
-    # 解码输出
-    generated_text = tokenizer.decode(output[0], skip_special_tokens=True)
-    
-    # 提取助手回复
-    if "assistant" in generated_text.lower():
-        parts = generated_text.split("assistant")
-        if len(parts) > 1:
-            response = parts[-1].strip()
+    if stream:
+        # 流式生成
+        from transformers import TextIteratorStreamer
+        streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
+        
+        generation_kwargs = {
+            'input_ids': input_ids,
+            'pixel_values': pixel_values,
+            'max_new_tokens': max_length,
+            'temperature': temperature,
+            'do_sample': True,
+            'top_p': 0.85,
+            'pad_token_id': tokenizer.pad_token_id,
+            'eos_token_id': tokenizer.eos_token_id,
+            'streamer': streamer
+        }
+        
+        # 在新线程中生成
+        thread = Thread(target=model.generate, kwargs=generation_kwargs)
+        thread.start()
+        
+        # 流式输出
+        generated_text = ""
+        for new_text in streamer:
+            generated_text += new_text
+            yield new_text
+        
+        thread.join()
+    else:
+        # 非流式生成
+        with torch.no_grad():
+            output = model.generate(
+                input_ids=input_ids,
+                pixel_values=pixel_values,
+                max_new_tokens=max_length,
+                temperature=temperature,
+                do_sample=True,
+                top_p=0.85,
+                pad_token_id=tokenizer.pad_token_id,
+                eos_token_id=tokenizer.eos_token_id
+            )
+        
+        # 解码输出
+        generated_text = tokenizer.decode(output[0], skip_special_tokens=True)
+        
+        # 提取助手回复
+        if "assistant" in generated_text.lower():
+            parts = generated_text.split("assistant")
+            if len(parts) > 1:
+                response = parts[-1].strip()
+            else:
+                response = generated_text[len(text):].strip()
         else:
             response = generated_text[len(text):].strip()
-    else:
-        response = generated_text[len(text):].strip()
-    
-    return response
+        
+        yield response
 
 
-def generate_response_api(client, model, image_path, prompt, max_tokens=512, temperature=0.7):
-    """通过 API 生成回复"""
+def generate_response_api(client, model, image_path, prompt, max_tokens=512, temperature=0.7, stream=False):
+    """通过 API 生成回复，支持流式输出"""
     base64_image = encode_image_to_base64(image_path)
     
     messages = [
@@ -142,10 +172,17 @@ def generate_response_api(client, model, image_path, prompt, max_tokens=512, tem
         messages=messages,
         max_tokens=max_tokens,
         temperature=temperature,
-        top_p=0.85
+        top_p=0.85,
+        stream=stream
     )
     
-    return response.choices[0].message.content
+    if stream:
+        # 流式输出
+        for chunk in response:
+            if chunk.choices and chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
+    else:
+        yield response.choices[0].message.content
 
 
 def main():
@@ -224,6 +261,11 @@ def main():
         choices=[0, 1],
         help="显示生成速度"
     )
+    parser.add_argument(
+        '--stream',
+        action='store_true',
+        help="启用流式输出"
+    )
     
     args = parser.parse_args()
     
@@ -249,10 +291,14 @@ def main():
         from openai import OpenAI
         client = OpenAI(api_key=args.api_key, base_url=args.api_base)
         print(f"🔗 API 模式: {args.api_base}")
-        print(f"📦 模型: {args.model}\n")
-        generate_fn = lambda img_path, prompt: generate_response_api(
-            client, args.model, img_path, prompt, args.max_length, args.temperature
-        )
+        print(f"📦 模型: {args.model}")
+        print(f"🌊 流式输出: {'开启' if args.stream else '关闭'}\n")
+        
+        def generate_fn(img_path, prompt):
+            for chunk in generate_response_api(
+                client, args.model, img_path, prompt, args.max_length, args.temperature, args.stream
+            ):
+                yield chunk
     else:
         # 本地模式
         if not args.model_path:
@@ -260,14 +306,16 @@ def main():
             return
         
         model, tokenizer = load_model_local(args.model_path, args.device)
-        print(f"📍 本地模式: {args.model_path}\n")
+        print(f"📍 本地模式: {args.model_path}")
+        print(f"🌊 流式输出: {'开启' if args.stream else '关闭'}\n")
         
         def generate_fn(img_path, prompt):
             image = Image.open(img_path).convert('RGB')
-            return generate_response_local(
+            for chunk in generate_response_local(
                 model, tokenizer, image, prompt,
-                args.max_length, args.temperature, args.device
-            )
+                args.max_length, args.temperature, args.device, args.stream
+            ):
+                yield chunk
     
     # 交互模式
     while True:
@@ -316,10 +364,12 @@ def main():
                         
                         try:
                             st = time.time()
-                            response = generate_fn(image_path, test_prompt)
+                            full_response = ""
+                            for chunk in generate_fn(image_path, test_prompt):
+                                print(chunk, end='', flush=True)
+                                full_response += chunk
                             elapsed = time.time() - st
                             
-                            print(response)
                             if args.show_speed:
                                 print(f'\n[Time]: {elapsed:.2f}s')
                         except Exception as e:
@@ -331,10 +381,12 @@ def main():
                 # 生成回复
                 print('🤖: ', end='', flush=True)
                 st = time.time()
+                full_response = ""
                 
                 try:
-                    response = generate_fn(image_path, prompt)
-                    print(response)
+                    for chunk in generate_fn(image_path, prompt):
+                        print(chunk, end='', flush=True)
+                        full_response += chunk
                     
                     elapsed = time.time() - st
                     if args.show_speed:

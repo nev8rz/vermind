@@ -87,10 +87,10 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="VerMind-V Training (Pretrain/SFT)")
-    parser.add_argument("--save_dir", type=str, default="../output/vlm_pretrain", help="模型保存目录")
+    parser.add_argument("--save_dir", type=str, default=None, help="模型保存目录 (默认: ../output/vlm_pretrain 或 ../output/vlm_sft)")
     parser.add_argument('--stage', type=str, default='pretrain', choices=['pretrain', 'sft'], 
                         help="训练阶段: pretrain(冻结LLM,只训练projection) 或 sft(全量训练)")
-    parser.add_argument('--save_weight', default='vlm_pretrain', type=str, help="保存权重的前缀名")
+    parser.add_argument('--save_weight', default=None, type=str, help="保存权重的前缀名 (默认: vlm_pretrain 或 vlm_sft)")
     parser.add_argument("--epochs", type=int, default=1, help="训练轮数")
     parser.add_argument("--batch_size", type=int, default=8, help="batch size")
     parser.add_argument("--learning_rate", type=float, default=5e-4, help="初始学习率")
@@ -144,12 +144,27 @@ if __name__ == "__main__":
         use_moe=bool(args.use_moe)
     )
     
+    # 根据 stage 设置默认保存路径
+    if args.save_dir:
+        save_dir = args.save_dir
+    elif args.stage == 'sft':
+        save_dir = '../output/vlm_sft'
+    else:
+        save_dir = '../output/vlm_pretrain'
+    
+    if args.save_weight:
+        save_weight = args.save_weight
+    elif args.stage == 'sft':
+        save_weight = 'vlm_sft'
+    else:
+        save_weight = 'vlm_pretrain'
+    
     # 检查 resume checkpoint
     training_state = None
     resume_path = None
     if args.from_resume == 1:
         moe_suffix = '_moe' if lm_config.use_moe else ''
-        resume_path = f'{args.save_dir}/{args.save_weight}_{lm_config.hidden_size}{moe_suffix}'
+        resume_path = f'{save_dir}/{save_weight}_{lm_config.hidden_size}{moe_suffix}'
         if os.path.exists(resume_path) and os.path.isdir(resume_path):
             try:
                 _, _, training_state = resume_training(resume_path, device=args.device)
@@ -350,7 +365,7 @@ if __name__ == "__main__":
     
     # ========== 7.5. 确定基础保存路径 ==========
     moe_suffix = '_moe' if lm_config.use_moe else ''
-    original_save_path = f'{args.save_dir}/{args.save_weight}_{lm_config.hidden_size}{moe_suffix}'
+    original_save_path = f'{save_dir}/{save_weight}_{lm_config.hidden_size}{moe_suffix}'
     base_save_path = get_base_save_path(original_save_path)
     if is_main_process():
         Logger(f'Base save path determined: {os.path.basename(base_save_path)}')

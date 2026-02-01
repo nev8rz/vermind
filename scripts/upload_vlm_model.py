@@ -43,6 +43,28 @@ def copy_vlm_files(checkpoint_path: str, temp_dir: str):
     
     print(f"📦 正在收集文件从: {checkpoint_path}")
     
+    # 0. 验证 model.safetensors 包含 Vision Encoder 权重
+    try:
+        from safetensors.torch import load_file
+        state_dict = load_file(checkpoint_path / "model.safetensors")
+        
+        llm_keys = [k for k in state_dict.keys() if k.startswith('model.') or k == 'lm_head.weight']
+        vision_proj_keys = [k for k in state_dict.keys() if k.startswith('vision_proj.')]
+        vision_encoder_keys = [k for k in state_dict.keys() if k.startswith('vision_encoder.')]
+        
+        print(f"\n📊 模型权重统计:")
+        print(f"  - LLM: {len(llm_keys)} keys")
+        print(f"  - Vision Projection: {len(vision_proj_keys)} keys")
+        print(f"  - Vision Encoder (SigLIP): {len(vision_encoder_keys)} keys")
+        
+        if len(vision_encoder_keys) == 0:
+            print(f"\n⚠️  警告: model.safetensors 中没有 Vision Encoder 权重!")
+            print(f"   模型将无法处理图像。请确保从正确的 VLM checkpoint 上传。")
+        else:
+            print(f"\n✅ Vision Encoder 权重已包含在 model.safetensors 中")
+    except Exception as e:
+        print(f"\n⚠️  无法验证权重: {e}")
+    
     # 1. 复制 checkpoint 中的文件
     required_files = [
         "model.safetensors",

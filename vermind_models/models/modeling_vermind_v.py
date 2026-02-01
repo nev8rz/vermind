@@ -19,11 +19,12 @@ class VisionProj(nn.Module):
         self.ve_hidden_size = ve_hidden_size
         self.hidden_size = hidden_size
         
+        intermediate_size = min(ve_hidden_size, hidden_size)
         self.proj = nn.Sequential(
-            nn.LayerNorm(ve_hidden_size),  # 先压制 SigLIP 的狂野波动
-            nn.Linear(ve_hidden_size, 512),
+            nn.LayerNorm(ve_hidden_size),  
+            nn.Linear(ve_hidden_size, intermediate_size),
             nn.GELU(),
-            nn.Linear(512, hidden_size)  # 输出匹配 LLM 维度
+            nn.Linear(intermediate_size, hidden_size)  
         )
 
     def forward(self, image_encoders):
@@ -73,10 +74,9 @@ class VerMindVLM(VerMindForCausalLM):
 
     @staticmethod
     def get_image_embeddings(image_tensors, vision_model):
-        # 虽然 vision_model 被冻结，但不要在这里 detach
-        # 否则梯度无法传播到 vision_proj
-        with torch.no_grad():
-            outputs = vision_model(pixel_values=image_tensors)
+        # vision_model 被冻结（requires_grad=False），但我们需要在 vision_proj 中计算梯度
+        # 所以不要使用 no_grad，让梯度能够传递到 vision_proj
+        outputs = vision_model(pixel_values=image_tensors)
         return outputs.last_hidden_state
 
     def count_vision_proj(self, tokens, h, vision_tensors=None, seqlen=512):

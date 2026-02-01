@@ -287,13 +287,10 @@ if __name__ == "__main__":
     train_sampler = DistributedSampler(train_ds) if dist.is_initialized() else None
     
     scaler = torch.amp.GradScaler('cuda', enabled=(args.dtype == 'float16'))
-    optimizer = optim.AdamW(trainable_params_list, lr=args.learning_rate)
     
     # ========== 6. 从ckp恢复状态 ==========
     start_epoch, start_step = 0, 0
     if training_state:
-        optimizer.load_state_dict(training_state['optimizer'])
-        scaler.load_state_dict(training_state['scaler'])
         start_epoch = training_state['epoch']
         start_step = training_state.get('step', 0)
     
@@ -301,6 +298,19 @@ if __name__ == "__main__":
     if dist.is_initialized():
         model._ddp_params_and_buffers_to_ignore = {"freqs_cos", "freqs_sin"}
         model = DistributedDataParallel(model, device_ids=[local_rank])
+    
+    trainable_params_list = [p for p in model.parameters() if p.requires_grad]
+    Logger(f'Total params: {sum(p.numel() for p in model.parameters())/1e6:.2f}M, Trainable: {sum(p.numel() for p in trainable_params_list)/1e6:.2f}M')
+    
+    optimizer = optim.AdamW(trainable_params_list, lr=args.learning_rate)
+    
+    # 恢复 optimizer 状态
+    if training_state:
+        try:
+            optimizer.load_state_dict(training_state['optimizer'])
+            scaler.load_state_dict(training_state['scaler'])
+        except Exception as e:
+            Logger(f'Failed to restore optimizer state: {e}')
     
     # ========== 7.5. 确定基础保存路径 ==========
     moe_suffix = '_moe' if lm_config.use_moe else ''

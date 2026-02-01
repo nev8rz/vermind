@@ -208,4 +208,4 @@ models/
 # SigLIP model
 siglip-base-patch16-224
 siglip-*/
-
+clip-vit-base-patch16

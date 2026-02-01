@@ -9,20 +9,20 @@ cd /root/vermind
 source .venv/bin/activate
 
 uv run python train/pretrain_vlm.py \
-    --from_weight /root/vermind/output/dpo/dpo_768/checkpoint_1610 \
+    --from_weight /root/vermind/output/pretrain/pretrain_768/checkpoint_10000 \
     --data_path /root/vermind/dataset/vlm_pretrain.parquet \
     --save_dir /root/vermind/output/vlm_pretrain \
     --tokenizer_path /root/vermind/vermind_tokenizer \
     --vision_encoder_path /root/vermind/siglip-base-patch16-224 \
-    --epochs 3 \
+    --epochs 4 \
     --batch_size 64 \
-    --accumulation_steps 16 \
+    --accumulation_steps 8 \
     --learning_rate 5e-4 \
     --warmup_ratio 0.03 \
     --max_seq_len 768 \
-    --num_workers 4 \
-    --save_interval 1000 \
-    --log_interval 100 \
+    --num_workers 8 \
+    --save_interval 5000 \
+    --log_interval 50 \
     --freeze_vision 1 \
     --freeze_llm 1 \
     --use_swanlab

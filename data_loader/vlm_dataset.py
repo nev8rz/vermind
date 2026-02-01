@@ -107,14 +107,24 @@ class VLMDataset(Dataset):
             if input_ids[i:i + len(self.bos_id)] == self.bos_id:
                 start = i + len(self.bos_id)
                 end = start
+                # 查找 EOS
+                found_eos = False
                 while end < len(input_ids):
                     if input_ids[end:end + len(self.eos_id)] == self.eos_id:
+                        found_eos = True
                         break
                     end += 1
-                # 标记 assistant 内容区域
-                for j in range(start, min(end + len(self.eos_id), self.max_length)):
-                    labels[j] = input_ids[j]
-                i = end + len(self.eos_id) if end < len(input_ids) else len(input_ids)
+                
+                if found_eos:
+                    # 标记 assistant 内容区域（包括 BOS 和 EOS）
+                    for j in range(i, min(end + len(self.eos_id), len(input_ids))):
+                        labels[j] = input_ids[j]
+                    i = end + len(self.eos_id)
+                else:
+                    # 没有找到 EOS，标记从 BOS 到序列结束
+                    for j in range(i, min(len(input_ids), self.max_length)):
+                        labels[j] = input_ids[j]
+                    i = len(input_ids)
             else:
                 i += 1
         return labels
@@ -126,20 +136,22 @@ class VLMDataset(Dataset):
         
         # 2. 处理文本
         prompt = self.create_chat_prompt(conversations)
-        input_ids = self.tokenizer(prompt).input_ids[:self.max_length]
+        input_ids = self.tokenizer(prompt).input_ids  # 先不截断
         
-        # 3. 将 <image> token 替换为 image_ids
+        # 3. 将 <image> token 替换为 image_ids（插入视觉特征 token）
         input_ids = self.insert_image_tokens(input_ids)
-        input_ids = input_ids[:self.max_length]  # 截断到 max_length
         
-        # 4. 填充到 max_length
+        # 4. 截断到 max_length（确保 image tokens 不会被截断）
+        input_ids = input_ids[:self.max_length]
+        
+        # 5. 填充到 max_length
         pad_len = self.max_length - len(input_ids)
         input_ids += [self.tokenizer.pad_token_id] * pad_len
         
-        # 5. 生成 labels
+        # 6. 生成 labels
         labels = self.generate_labels(input_ids)
         
-        # 6. 处理图像 -> pixel_values
+        # 7. 处理图像 -> pixel_values
         image = Image.open(io.BytesIO(image_bytes))
         pixel_values = VerMindVLM.image2tensor(image, self.processor)
         

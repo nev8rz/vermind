@@ -208,7 +208,7 @@ if __name__ == "__main__":
             Logger(f'Failed to load safetensors: {e}, trying torch.load')
             state_dict = torch.load(os.path.join(load_path, "pytorch_model.bin"), map_location='cpu')
         
-        # 加载 model 和 lm_head 的权重（跳过 vision_proj）
+        # 加载 checkpoint 中的权重到 VLM
         model_state = model.state_dict()
         loaded_keys = []
         skipped_keys = []
@@ -223,12 +223,24 @@ if __name__ == "__main__":
             else:
                 skipped_keys.append(f"{key} (not in VLM)")
         
-        Logger(f'Loaded {len(loaded_keys)} keys from LLM checkpoint')
+        # 分类统计
+        llm_keys = [k for k in loaded_keys if k.startswith('model.') or k == 'lm_head.weight']
+        vision_proj_keys = [k for k in loaded_keys if k.startswith('vision_proj.')]
+        vision_encoder_keys = [k for k in loaded_keys if k.startswith('vision_encoder.')]
+        
+        Logger(f'Loaded {len(loaded_keys)} keys from checkpoint:')
+        Logger(f'  - LLM: {len(llm_keys)} keys')
+        if vision_proj_keys:
+            Logger(f'  - Vision Proj: {len(vision_proj_keys)} keys (pre-trained)')
+        else:
+            Logger(f'  - Vision Proj: 0 keys (will be trained from scratch)')
+        if vision_encoder_keys:
+            Logger(f'  - Vision Encoder: {len(vision_encoder_keys)} keys')
+        
         if skipped_keys:
-            Logger(f'Skipped {len(skipped_keys)} keys (Vision Proj will be trained from scratch)')
+            Logger(f'Skipped {len(skipped_keys)} keys')
         
         model = model.to(args.device)
-        Logger('VLM initialized with LLM weights, Vision Proj is random')
     else:
         # 从头开始训练
         tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path)

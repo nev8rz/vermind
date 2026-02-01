@@ -125,7 +125,7 @@ if __name__ == "__main__":
     
     # 其他
     parser.add_argument("--use_swanlab", action="store_true", help="是否使用swanlab")
-    parser.add_argument("--swanlab_project", type=str, default="VerMind-V-Pretrain", help="swanlab项目名")
+    parser.add_argument("--swanlab_project", type=str, default=None, help="swanlab项目名 (默认: VerMind-V-Pretrain 或 VerMind-V-SFT)")
     parser.add_argument("--use_compile", default=0, type=int, choices=[0, 1], help="是否使用torch.compile")
     args = parser.parse_args()
 
@@ -168,8 +168,15 @@ if __name__ == "__main__":
     if args.use_swanlab and is_main_process():
         swanlab_id = training_state.get('swanlab_id') if training_state else None
         resume = 'must' if swanlab_id else None
-        swanlab_run_name = f"VerMind-V-Pretrain-Epoch-{args.epochs}-BatchSize-{args.batch_size}-LearningRate-{args.learning_rate}"
-        swanlab.init(project=args.swanlab_project, name=swanlab_run_name, id=swanlab_id, resume=resume)
+        # 根据 stage 设置默认项目名 (pretrain: VerMind-V-Pretrain, sft: VerMind-V-SFT)
+        if args.swanlab_project:
+            swanlab_project = args.swanlab_project
+        elif args.stage == 'sft':
+            swanlab_project = "VerMind-V-SFT"
+        else:
+            swanlab_project = "VerMind-V-Pretrain"
+        swanlab_run_name = f"VerMind-V-{args.stage.upper()}-Epoch-{args.epochs}-BatchSize-{args.batch_size}-LearningRate-{args.learning_rate}"
+        swanlab.init(project=swanlab_project, name=swanlab_run_name, id=swanlab_id, resume=resume)
         swanlab_run = swanlab.get_run()
     
     # ========== 5. 定义模型、数据、优化器 ==========

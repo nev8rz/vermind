@@ -68,6 +68,20 @@ def load_model_local(model_path, device='cuda'):
     return model, tokenizer
 
 
+def insert_image_tokens(input_ids, image_token_ids, image_ids):
+    """将 <image> 的 tokenizer 输出替换为 image_ids"""
+    new_input_ids = []
+    i = 0
+    while i < len(input_ids):
+        if input_ids[i:i+len(image_token_ids)] == image_token_ids:
+            new_input_ids.extend(image_ids)
+            i += len(image_token_ids)
+        else:
+            new_input_ids.append(input_ids[i])
+            i += 1
+    return new_input_ids
+
+
 def generate_response_local(model, tokenizer, image, prompt, max_length=512, temperature=0.7, device='cuda', stream=False):
     """本地生成回复，支持流式输出"""
     # 构建消息
@@ -84,7 +98,15 @@ def generate_response_local(model, tokenizer, image, prompt, max_length=512, tem
     
     # 编码输入
     inputs = tokenizer(text, return_tensors="pt")
-    input_ids = inputs.input_ids.to(device)
+    input_ids_list = inputs.input_ids[0].tolist()
+    
+    # 获取 <image> 的 token ids 并替换为 image_ids
+    image_token_ids = tokenizer("<image>", add_special_tokens=False).input_ids
+    image_ids = model.params.image_ids
+    input_ids_list = insert_image_tokens(input_ids_list, image_token_ids, image_ids)
+    
+    # 转回 tensor
+    input_ids = torch.tensor([input_ids_list], dtype=torch.long).to(device)
     
     # 处理图像
     pixel_values = model.image2tensor(image, model.processor)

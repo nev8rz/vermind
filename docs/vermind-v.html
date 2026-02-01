@@ -643,18 +643,50 @@
         </div>
     </section>
 
-    <section class="coming-soon">
+    <section class="coming-soon" id="training">
         <div class="container">
-            <div class="coming-soon-card">
-                <div class="coming-soon-icon">🚧</div>
-                <h3 data-lang="en">Coming Soon</h3>
-                <h3 data-lang="zh">即将推出</h3>
-                <p data-lang="en">VerMind-V is currently in development. Check back soon for updates and documentation.</p>
-                <p data-lang="zh">VerMind-V 目前正在开发中。请稍后再回来查看更新和文档。</p>
-                <a href="https://github.com/nev8rz/vermind" class="btn btn-primary" target="_blank">
-                    <span data-lang="en">Follow Progress on GitHub</span>
-                    <span data-lang="zh">在 GitHub 上关注进展</span>
-                </a>
+            <h2 class="section-title" data-lang="en">Training Pipeline</h2>
+            <h2 class="section-title" data-lang="zh">训练流程</h2>
+            <p class="section-subtitle" data-lang="en">Two-stage training with unified script</p>
+            <p class="section-subtitle" data-lang="zh">使用统一脚本进行两阶段训练</p>
+            
+            <div class="coming-soon-card" style="max-width: 800px; text-align: left;">
+                <h3 data-lang="en" style="margin-bottom: 20px;">🚀 Quick Start</h3>
+                <h3 data-lang="zh" style="margin-bottom: 20px;">🚀 快速开始</h3>
+                
+                <div style="margin-bottom: 30px;">
+                    <h4 style="color: var(--primary); margin-bottom: 12px;" data-lang="en">Stage 1: Vision-Language Pre-training</h4>
+                    <h4 style="color: var(--primary); margin-bottom: 12px;" data-lang="zh">阶段 1: 视觉-语言预训练</h4>
+                    <pre style="background: rgba(15, 23, 42, 0.8); padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 0.85rem; border: 1px solid var(--border);"><code>bash examples/pretrain_vlm.sh</code></pre>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 8px;" data-lang="en">Freeze LLM, train only vision projector on image-text pairs</p>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 8px;" data-lang="zh">冻结 LLM，仅在图文对上训练视觉投影器</p>
+                </div>
+                
+                <div style="margin-bottom: 30px;">
+                    <h4 style="color: var(--primary); margin-bottom: 12px;" data-lang="en">Stage 2: Visual Instruction Tuning</h4>
+                    <h4 style="color: var(--primary); margin-bottom: 12px;" data-lang="zh">阶段 2: 视觉指令微调</h4>
+                    <pre style="background: rgba(15, 23, 42, 0.8); padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 0.85rem; border: 1px solid var(--border);"><code>bash examples/vlm_sft.sh</code></pre>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 8px;" data-lang="en">Full model training on visual instruction-following data</p>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 8px;" data-lang="zh">在视觉指令遵循数据上进行全模型训练</p>
+                </div>
+                
+                <div style="border-top: 1px solid var(--border); padding-top: 24px;">
+                    <h4 style="color: var(--primary); margin-bottom: 12px;" data-lang="en">Unified Training Script</h4>
+                    <h4 style="color: var(--primary); margin-bottom: 12px;" data-lang="zh">统一训练脚本</h4>
+                    <pre style="background: rgba(15, 23, 42, 0.8); padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 0.85rem; border: 1px solid var(--border);"><code>python train/train_vlm.py \
+    --stage {pretrain|sft} \
+    --from_weight ./output/sft/full_sft_768 \
+    --data_path ./dataset/vlm_data.parquet \
+    --vision_encoder_path ./siglip-base-patch16-224 \
+    ...</code></pre>
+                </div>
+                
+                <div style="text-align: center; margin-top: 30px;">
+                    <a href="https://github.com/nev8rz/vermind/blob/main/README_v.md" class="btn btn-primary" target="_blank">
+                        <span data-lang="en">View Full Documentation</span>
+                        <span data-lang="zh">查看完整文档</span>
+                    </a>
+                </div>
             </div>
         </div>
     </section>

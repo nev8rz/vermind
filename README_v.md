@@ -99,18 +99,48 @@ print(tokenizer.decode(outputs[0]))
 
 ### 1. Vision-Language Pre-training
 
-Pre-train the projector on large-scale image-text pairs:
+Pre-train the projector on large-scale image-text pairs (freeze LLM, train only vision projection):
 
 ```bash
-bash examples/vlm_pretrain.sh
+bash examples/pretrain_vlm.sh
 ```
+
+**Key Parameters:**
+- `--stage pretrain`: Pre-training stage (freeze LLM by default)
+- `--freeze_llm 1`: Freeze LLM parameters, only train vision projector
+- `--learning_rate 5e-4`: Higher learning rate for pre-training
 
 ### 2. Visual Instruction Tuning
 
-Fine-tune on visual instruction-following data:
+Fine-tune on visual instruction-following data (full model training):
 
 ```bash
 bash examples/vlm_sft.sh
+```
+
+**Key Parameters:**
+- `--stage sft`: SFT stage (unfreeze LLM by default)
+- `--freeze_llm 0`: Unfreeze LLM for full model training
+- `--learning_rate 5e-6`: Lower learning rate for fine-tuning
+
+### Unified Training Script
+
+Both stages use the same `train/train_vlm.py` script with `--stage` parameter:
+
+```bash
+# Pre-training
+python train/train_vlm.py \
+    --stage pretrain \
+    --from_weight ./output/sft/full_sft_768 \
+    --data_path ./dataset/vlm_pretrain.parquet \
+    ...
+
+# SFT
+python train/train_vlm.py \
+    --stage sft \
+    --from_weight ./output/vlm_pretrain/vlm_pretrain_768 \
+    --data_path ./dataset/sft_data.parquet \
+    ...
 ```
 
 ### 3. Deploy
@@ -125,15 +155,17 @@ python vllm_adapter/start_server.py ./output/vlm/vlm_base
 vermind/
 ├── vermind_models/
 │   ├── models/
-│   │   ├── vermind_vlm.py      # VerMindVLM implementation
-│   │   └── vision_encoder.py   # Vision encoder wrapper
+│   │   ├── modeling_vermind_v.py  # VerMindVLM implementation
+│   │   └── vision_encoder.py      # Vision encoder wrapper
 │   └── config/
-│       └── vlm_config.py       # VLM configuration
+│       └── vlm_config.py          # VLM configuration
 ├── data_loader/
-│   └── vlm_dataset.py          # Multimodal dataset classes
-└── train/
-    ├── vlm_pretrain.py         # Pre-training script
-    └── vlm_sft.py              # Visual SFT script
+│   └── vlm_dataset.py             # Multimodal dataset classes
+├── train/
+│   └── train_vlm.py               # Unified VLM training (pretrain/sft)
+└── examples/
+    ├── pretrain_vlm.sh            # Pre-training launch script
+    └── vlm_sft.sh                 # SFT launch script
 ```
 
 ## 🤝 Integration with VerMind

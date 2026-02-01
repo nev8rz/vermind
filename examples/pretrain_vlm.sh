@@ -8,7 +8,8 @@ tmux new-session -d -s vlm_pretrain "
 cd /root/vermind
 source .venv/bin/activate
 
-uv run python train/pretrain_vlm.py \
+uv run python train/train_vlm.py \
+    --stage pretrain \
     --from_weight /root/vermind/output/pretrain/pretrain_768/checkpoint_10000 \
     --data_path /root/vermind/dataset/vlm_pretrain.parquet \
     --save_dir /root/vermind/output/vlm_pretrain \
@@ -27,7 +28,8 @@ uv run python train/pretrain_vlm.py \
     --freeze_llm 1 \
     --use_swanlab
 "
-#   uv run python train/pretrain_vlm.py \
+#   uv run python train/train_vlm.py \
+#       --stage pretrain \
 #       --from_weight /root/vermind/output/dpo/dpo_768/checkpoint_1610 \
 #       --data_path /root/vermind/dataset/vlm_pretrain.parquet \
 #       --save_dir /root/vermind/output/vlm_pretrain \
@@ -37,7 +39,7 @@ uv run python train/pretrain_vlm.py \
 #       --learning_rate 4e-4 
 # 常用参数说明:
 # --freeze_vision 1      # 冻结 Vision Encoder (推荐)
-# --freeze_llm 0         # 不冻结 LLM (全量训练) 或 1 (只训练 projection)
+# --freeze_llm 1         # 冻结 LLM (pretrain阶段推荐只训练 projection)
 # --from_weight ./output/vlm_pretrain/vlm_pretrain_768  # 从已有 checkpoint 继续训练
 # --from_resume 1        # 自动检测并续训
 

@@ -328,7 +328,57 @@ python scripts/eval_llm.py \
     --use_chat_template 1
 ```
 
-### 10. Deploy with vLLM
+### 10. Vision-Language Model (VLM) Training
+
+VerMind-V extends the base model with vision capabilities. Train your own VLM with the unified training script:
+
+#### Stage 1: Vision-Language Pre-training
+
+Pre-train the projector on large-scale image-text pairs (freeze LLM, train only vision projection):
+
+```bash
+bash examples/pretrain_vlm.sh
+
+# Or run directly
+python train/train_vlm.py \
+    --stage pretrain \
+    --from_weight ./output/sft/full_sft_768 \
+    --data_path ./dataset/vlm_pretrain.parquet \
+    --save_dir ./output/vlm_pretrain \
+    --tokenizer_path ./vermind_tokenizer \
+    --vision_encoder_path ./siglip-base-patch16-224 \
+    --epochs 4 \
+    --batch_size 64 \
+    --learning_rate 5e-4 \
+    --freeze_vision 1 \
+    --freeze_llm 1
+```
+
+#### Stage 2: Visual Instruction Tuning
+
+Fine-tune on visual instruction-following data (full model training):
+
+```bash
+bash examples/vlm_sft.sh
+
+# Or run directly
+python train/train_vlm.py \
+    --stage sft \
+    --from_weight ./output/vlm_pretrain/vlm_pretrain_768 \
+    --data_path ./dataset/sft_data.parquet \
+    --save_dir ./output/vlm_sft \
+    --tokenizer_path ./vermind_tokenizer \
+    --vision_encoder_path ./siglip-base-patch16-224 \
+    --epochs 3 \
+    --batch_size 32 \
+    --learning_rate 5e-6 \
+    --freeze_vision 1 \
+    --freeze_llm 0
+```
+
+**VLM Data Format**: Parquet files with `image_bytes` (binary) and `conversations` (JSON string) columns.
+
+### 11. Deploy with vLLM
 
 Start a high-performance API server compatible with OpenAI's client:
 

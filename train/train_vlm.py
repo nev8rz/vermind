@@ -86,8 +86,10 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="VerMind-V Pretraining")
+    parser = argparse.ArgumentParser(description="VerMind-V Training (Pretrain/SFT)")
     parser.add_argument("--save_dir", type=str, default="../output/vlm_pretrain", help="模型保存目录")
+    parser.add_argument('--stage', type=str, default='pretrain', choices=['pretrain', 'sft'], 
+                        help="训练阶段: pretrain(冻结LLM,只训练projection) 或 sft(全量训练)")
     parser.add_argument('--save_weight', default='vlm_pretrain', type=str, help="保存权重的前缀名")
     parser.add_argument("--epochs", type=int, default=1, help="训练轮数")
     parser.add_argument("--batch_size", type=int, default=8, help="batch size")
@@ -119,7 +121,7 @@ if __name__ == "__main__":
     parser.add_argument('--from_weight', default='none', type=str, help="基于哪个权重训练（支持目录路径）")
     parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="是否自动检测&续训")
     parser.add_argument('--freeze_vision', default=1, type=int, choices=[0, 1], help="是否冻结 Vision Encoder（推荐冻结）")
-    parser.add_argument('--freeze_llm', default=0, type=int, choices=[0, 1], help="是否冻结 LLM（预训练阶段通常只训练 projection）")
+    parser.add_argument('--freeze_llm', default=None, type=int, choices=[0, 1], help="是否冻结 LLM（默认: pretrain阶段冻结, sft阶段解冻）")
     
     # 其他
     parser.add_argument("--use_swanlab", action="store_true", help="是否使用swanlab")
@@ -251,6 +253,21 @@ if __name__ == "__main__":
             except Exception as e:
                 Logger(f'Failed to re-load Vision Encoder: {e}')
     
+    # 根据 stage 设置默认冻结策略（--freeze_llm 可覆盖）
+    if args.freeze_llm is not None:
+        # 用户显式指定了 --freeze_llm，使用用户设置
+        freeze_llm = args.freeze_llm
+        mode_str = "冻结 LLM" if freeze_llm == 1 else "全量训练"
+        Logger(f'[Stage: {args.stage}] 用户指定: {mode_str}')
+    elif args.stage == 'pretrain':
+        # Pretrain 阶段默认：冻结 LLM，只训练 projection
+        freeze_llm = 1
+        Logger(f'[Stage: Pretrain] 默认: 冻结 LLM，只训练 Vision Projection')
+    else:  # sft
+        # SFT 阶段默认：解冻 LLM，全量训练
+        freeze_llm = 0
+        Logger(f'[Stage: SFT] 默认: 全量训练（包括 LLM 和 Vision Projection）')
+    
     # 冻结设置
     if args.freeze_vision == 1 and model.vision_encoder is not None:
         for param in model.vision_encoder.parameters():
@@ -258,7 +275,7 @@ if __name__ == "__main__":
         Logger('Vision Encoder frozen')
     
     # 冻结 LLM（梯度可以流过，但这些参数不更新）
-    if args.freeze_llm == 1:
+    if freeze_llm == 1:
         for name, param in model.named_parameters():
             if "vision_proj" not in name:
                 param.requires_grad = False

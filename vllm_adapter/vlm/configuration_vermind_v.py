@@ -1,18 +1,32 @@
 # coding=utf-8
-# Configuration file for VerMind-V model
+"""
+Configuration file for VerMind-V model - Standalone Version
+"""
 
-import sys
-import os
-
-# Add the vermind_models package to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../../'))
-
-# Import and register the config with Transformers
+from typing import List
 from transformers import AutoConfig
-from vermind_models.config import VLMConfig
+
+from ..core.configuration_vermind import VerMindConfig
+
+
+class VLMConfig(VerMindConfig):
+    """Configuration class for VerMind-V (Vision-Language) model"""
+    model_type = "vermind-v"
+
+    def __init__(
+        self,
+        image_special_token: str = '<image>',
+        image_ids: List = None,
+        **kwargs,
+    ):
+        if image_ids is None:
+            image_ids = [34] * 196  # SigLIP 14x14 = 196 tokens, no pooling
+        self.image_special_token = image_special_token
+        self.image_ids = image_ids
+        super().__init__(**kwargs)
+
 
 # Register the config class
 AutoConfig.register("vermind-v", VLMConfig)
 
-# Export the config class
 __all__ = ["VLMConfig"]

@@ -256,7 +256,10 @@ def create_demo():
                 if "type" in inspect.signature(gr.Chatbot.__init__).parameters:
                     chatbot_kwargs["type"] = "tuples"
                 chatbot = gr.Chatbot(**chatbot_kwargs)
-                chatbot_format = getattr(chatbot, "type", None) or "tuples"
+                chatbot_format = getattr(chatbot, "type", None)
+                if not chatbot_format:
+                    # 新版 gradio 可能移除 type 参数，默认使用 messages 格式
+                    chatbot_format = "messages"
                 
                 with gr.Row():
                     msg_input = gr.Textbox(
@@ -284,6 +287,19 @@ def create_demo():
         def _ensure_history(history):
             return history or []
 
+        def _format_user_content(image_path, message, use_messages):
+            if not image_path:
+                return message
+            if use_messages:
+                # Gradio messages 多模态格式
+                return [
+                    {"path": image_path, "alt_text": "image"},
+                    {"type": "text", "text": message},
+                ]
+            # 兼容 tuples：用 Markdown 图片语法
+            image_md = f"![image](file={image_path})\n\n"
+            return f"{image_md}{message}"
+
         def user_message(message, history, image_path):
             """处理用户消息"""
             if not message.strip():
@@ -302,11 +318,11 @@ def create_demo():
                 return "", history, image_path
             
             # 显示用户消息（包含图片）
-            image_html = f'<img src="file/{image_path}" style="max-width:100px;max-height:100px;border-radius:8px;margin-bottom:5px;"><br>'
+            user_content = _format_user_content(image_path, message, chatbot_format == "messages")
             if chatbot_format == "messages":
-                history = history + [{"role": "user", "content": f"{image_html}{message}"}]
+                history = history + [{"role": "user", "content": user_content}]
             else:
-                history = history + [(f"{image_html}{message}", None)]
+                history = history + [(user_content, None)]
             return "", history, image_path
         
         def bot_response(history, image_path, temperature, top_p, max_tokens):
@@ -331,7 +347,20 @@ def create_demo():
 
             # 提取纯文本（去掉图片 HTML）
             import re
-            text_only = re.sub(r'<img[^>]*>', '', user_message_text).strip()
+            if isinstance(user_message_text, list):
+                parts = []
+                for item in user_message_text:
+                    if isinstance(item, str):
+                        parts.append(item)
+                    elif isinstance(item, dict):
+                        if "text" in item and isinstance(item["text"], str):
+                            parts.append(item["text"])
+                        elif item.get("type") == "text" and isinstance(item.get("text"), str):
+                            parts.append(item["text"])
+                user_message_text = " ".join(parts)
+            if not isinstance(user_message_text, str):
+                user_message_text = ""
+            text_only = re.sub(r"!\[[^\]]*\]\(file=[^\)]*\)", "", user_message_text).strip()
             
             # 生成回复
             response = ""

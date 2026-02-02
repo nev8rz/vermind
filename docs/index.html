@@ -234,6 +234,16 @@
             margin-bottom: 24px;
             flex-grow: 1;
         }
+
+        .card-preview {
+            width: 100%;
+            height: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin: 14px 0 18px;
+            aspect-ratio: 16 / 9;
+            object-fit: cover;
+        }
         
         .card-features {
             list-style: none;
@@ -401,6 +411,7 @@
                     <div class="card-icon">👁️</div>
                     <h2 class="card-title">VerMind-V</h2>
                     <p class="card-tagline">Vision-Language Model</p>
+                    <img src="assets/vlm_sample.png" alt="VerMind-V Demo" class="card-preview">
                     <p class="card-description">Multimodal extension of VerMind with vision encoder integration. Understand and reason about images alongside text.</p>
                     <ul class="card-features">
                         <li>Vision encoder integration</li>

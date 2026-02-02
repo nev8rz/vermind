@@ -1,7 +1,7 @@
 #
 <div align="center">
   <a href="https://github.com/nev8rz/vermind">
-    <img src="https://raw.githubusercontent.com/nev8rz/vermind/main/docs/assets/vermind_logo.png" alt="VerMind Logo" width="120">
+    <img src="https://raw.githubusercontent.com/nev8rz/vermind/main/docs/assets/logo.png" alt="VerMind Logo" width="120">
   </a>
   <h1 align="center">VerMind</h1>
   <p align="center">
@@ -17,7 +17,7 @@
 
 <div align="center">
 
-**English** · [简体中文](README_zh.md)
+**English** · [简体中文](./docs/README_zh.md)
 
 </div>
 

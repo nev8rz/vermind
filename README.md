@@ -3,20 +3,21 @@
   <a href="https://github.com/nev8rz/vermind">
     <img src="https://raw.githubusercontent.com/nev8rz/vermind/main/docs/assets/logo.png" alt="VerMind Logo" width="800">
   </a>
+  <!-- <h1 align="center">VerMind</h1> -->
   <p align="center">
-    A lightweight modern language model built from the ground up in PyTorch.
+    一个从零开始、基于 PyTorch 构建的轻量级现代语言模型。
     <br />
-    <a href="https://nev8rz.github.io/vermind/"><strong>View Demo »</strong></a>
+    <a href="https://nev8rz.github.io/vermind/"><strong>查看演示 »</strong></a>
     ·
-    <a href="https://github.com/nev8rz/vermind/issues">Report Bug</a>
+    <a href="https://github.com/nev8rz/vermind/issues">报告 Bug</a>
     ·
-    <a href="https://github.com/nev8rz/vermind/issues">Request Feature</a>
+    <a href="https://github.com/nev8rz/vermind/issues">请求功能</a>
   </p>
 </div>
 
 <div align="center">
 
-**简体中文** · [English](./docs/README_v.md)
+**简体中文** · [English](./docs/README_en.md) · [README_v](./docs/README_v.md)
 
 </div>
 
@@ -28,77 +29,78 @@
 [![GitHub Stars](https://img.shields.io/github/stars/nev8rz/vermind?logo=github)](https://github.com/nev8rz/vermind/stargazers)
 [![HF LLM](https://img.shields.io/badge/HF-LLM%20%7C%20vermind-yellow?logo=huggingface)](https://huggingface.co/nev8r/vermind)
 
+
+
 </div>
 
 ---
 
-## 🛠️ Core Features
+## 🛠️ 核心功能
 
-| Feature | Description |
+| 功能 | 描述 |
 |---|---|
-| ⚡ **Grouped Query Attention (GQA)** | Reduces inference memory bandwidth by sharing key-value heads for significant speedups. |
-| 🔥 **SwiGLU Activation** | A modern activation function that often outperforms ReLU or GeLU. |
-| 📐 **Rotary Position Embedding (RoPE)** | Relative position encoding with YaRN scaling for extended context length. |
-| 🚀 **vLLM Adapter** | High-throughput inference with an OpenAI-compatible API server out of the box. |
-| 🎨 **LoRA Fine-Tuning** | Parameter-efficient fine-tuning (PEFT) via Low-Rank Adaptation. |
-| 🌐 **Distributed Training** | Built-in Distributed Data Parallel (DDP) support for multi-GPU training. |
-| 📦 **Packed SFT Training** | Varlen FlashAttention sequence packing to reduce padding waste and improve GPU utilization. |
-| 🎯 **Direct Preference Optimization (DPO)** | Aligns models with preference pairs without a separate reward model. |
-| 🎮 **Proximal Policy Optimization (PPO)** | RLHF training with reward models to improve reasoning and response quality. |
-| 🎯 **Group Relative Policy Optimization (GRPO)** | Efficient RL training without a critic, using group-relative advantages. |
+| ⚡ **分组查询注意力 (GQA)** | 通过共享键值头来减少推理所需的内存带宽，从而实现显著的速度提升。 |
+| 🔥 **SwiGLU 激活函数** | 一种现代激活函数，通常比传统的 ReLU 或 GeLU 带来更好的性能。 |
+| 📐 **旋转位置嵌入 (RoPE)** | 一种相对位置编码方案，已成为高性能语言模型的标配。包含 YaRN 缩放以扩展上下文长度。 |
+| 🚀 **vLLM 适配器** | 支持极速推理，并提供与 OpenAI 兼容的 API 服务器，开箱即用。 |
+| 🎨 **LoRA 微调** | 支持使用低秩自适应 (LoRA) 进行参数高效微调 (PEFT)，实现快速、低内存占用的定制化。 |
+| 🌐 **分布式训练** | 内置对分布式数据并行 (DDP) 的支持，可将训练扩展到多个 GPU。 |
+| 📦 **打包式 SFT 训练** | 使用 Varlen FlashAttention 的序列打包 SFT，减少填充浪费，提升 GPU 利用率。 |
+| 🎯 **直接偏好优化 (DPO)** | 使用偏好对对齐人类偏好，无需奖励模型即可提升输出质量。 |
+| 🎮 **近端策略优化 (PPO)** | 使用奖励模型进行 RLHF 训练，增强推理能力和回复质量。 |
+| 🎯 **组相对策略优化 (GRPO)** | 无需 Critic 模型的高效 RL 训练，使用组内相对优势进行策略优化。 |
 
-## 🏗️ Architecture Overview
+## 🏗️ 架构概览
 
-VerMind's architecture is a decoder-only transformer optimized for performance and scalability. The core components are designed to be both efficient and easy to understand.
+VerMind 的架构是一个为性能和可扩展性而优化的仅解码器 Transformer 模型。核心组件设计得既高效又易于理解。
 
 ![VerMind Architecture](https://raw.githubusercontent.com/nev8rz/vermind/main/docs/assets/architecture.png)
+## 📊 评估结果
 
-## 📊 Evaluation Results
+VerMind 在中文语言理解基准测试中的表现（768 隐藏层大小模型）：
 
-VerMind has been evaluated on Chinese language understanding benchmarks (768 hidden size model):
-
-| Benchmark | Version | SFT | DPO | PPO | GRPO |
-|-----------|---------|-----|-----|-----|------|
+| 基准测试 | 版本 | SFT | DPO | PPO | GRPO |
+|---------|------|-----|-----|-----|------|
 | ACLUE | v1 | 25.67% ± 0.62% | 25.41% ± 0.62% | **25.82%** ± 0.62% | 25.76% ± 0.62% |
 | CEval-Valid | v2 | 23.85% ± 1.17% | 23.55% ± 1.16% | **23.92%** ± 1.16% | 23.78% ± 1.16% |
 | CMMLU | v1 | 24.79% ± 0.40% | **25.19%** ± 0.40% | 25.17% ± 0.40% | 24.95% ± 0.40% |
 | TMMLUPlus | v2 | 25.15% ± 0.22% | **25.33%** ± 0.22% | 25.17% ± 0.22% | 25.21% ± 0.22% |
 
-*Higher is better. Best results in bold.*
-> Toy evaluation; multiple-choice random guess baseline is around 25%.
+*数值越高越好。最优结果加粗显示。*
+> 玩具评测，选择题1/4概率左右
 
-## 🚀 Getting Started
+## 🚀 快速开始
 
-Get your local copy up and running in a few simple steps.
+只需几个简单步骤即可在本地运行。
 
-### Prerequisites
+### 环境要求
 
 -   Python 3.12+
 -   PyTorch 2.8.0+
--   `uv` package manager (recommended)
+-   `uv` 包管理器 (推荐)
 
-### Installation
+### 安装
 
 ```bash
-# Clone the repository
+# 克隆仓库
 git clone https://github.com/nev8rz/vermind.git
 cd vermind
 
-# Create and activate virtual environment
+# 创建并激活虚拟环境
 uv venv
 source .venv/bin/activate
 
-# Install dependencies
+# 安装依赖
 uv pip install -e .
 ```
 
-## 🏃‍♀️ Usage Examples
+## 🏃‍♀️ 使用示例
 
-VerMind provides a complete training pipeline with convenient shell scripts located in `examples/`. The training workflow follows: **Tokenizer → Pre-training → SFT → DPO/PPO/GRPO (optional) → LoRA → Deployment**.
+VerMind 提供了一个完整的训练流程，并在 `examples/` 目录中提供了便捷的 Shell 脚本。训练工作流如下：**分词器 → 预训练 → SFT → DPO/PPO/GRPO（可选）→ LoRA → 部署**。
 
-### 1. Train Tokenizer
+### 1. 训练分词器
 
-First, train a custom tokenizer on your corpus:
+首先，在你的语料库上训练一个自定义分词器：
 
 ```bash
 python train/train_tokenizer.py \
@@ -107,15 +109,15 @@ python train/train_tokenizer.py \
     --vocab_size 6400
 ```
 
-### 2. Pre-training
+### 2. 预训练
 
-Pre-train the model from scratch on a large corpus. Use the provided script or run directly:
+在大规模语料库上从头开始预训练模型。使用提供的脚本或直接运行：
 
 ```bash
-# Option 1: Use the launch script (runs in tmux)
+# 方式一：使用启动脚本 (在 tmux 中运行)
 bash examples/pretrain.sh
 
-# Option 2: Run directly with custom parameters
+# 方式二：使用自定义参数直接运行
 python train/pretrain.py \
     --data_path /path/to/pretrain_data.jsonl \
     --save_dir ./output/pretrain \
@@ -125,15 +127,15 @@ python train/pretrain.py \
     --learning_rate 1e-3
 ```
 
-### 3. Supervised Fine-Tuning (SFT)
+### 3. 监督微调 (SFT)
 
-Fine-tune the pre-trained model on instruction-following data:
+在指令遵循数据上对预训练模型进行微调：
 
 ```bash
-# Option 1: Use the launch script (runs in tmux)
+# 方式一：使用启动脚本 (在 tmux 中运行)
 bash examples/sft.sh
 
-# Option 2: Run directly with custom parameters
+# 方式二：使用自定义参数直接运行
 python train/sft.py \
     --data_path /path/to/sft_data.jsonl \
     --save_dir ./output/sft \
@@ -143,15 +145,15 @@ python train/sft.py \
     --learning_rate 5e-6
 ```
 
-#### Packed SFT Training
+#### 打包式 SFT 训练
 
-For more efficient training with better GPU utilization, use the packed SFT training mode which packs multiple sequences into a single batch using Varlen FlashAttention:
+使用打包式 SFT 训练模式，通过 Varlen FlashAttention 将多个序列打包到单个批次中，实现更高效的训练和更好的 GPU 利用率：
 
 ```bash
-# Option 1: Use the launch script (runs in tmux)
+# 方式一：使用启动脚本 (在 tmux 中运行)
 bash examples/sft_packed.sh
 
-# Option 2: Run directly with custom parameters
+# 方式二：使用自定义参数直接运行
 python train/sft_packed.py \
     --data_path /path/to/sft_data.jsonl \
     --parquet_path ./cache/sft_packed/sft.parquet \
@@ -164,10 +166,10 @@ python train/sft_packed.py \
     --max_seq_len 2048
 ```
 
-**Preprocessing data for packed training:**
+**打包训练的数据预处理：**
 
 ```bash
-# First, preprocess your JSONL data into packed Parquet format
+# 首先，将 JSONL 数据预处理为打包的 Parquet 格式
 python scripts/pre_sftdatapacked.py \
     --jsonl_path /path/to/sft_data.jsonl \
     --output_path ./cache/sft_packed/sft.parquet \
@@ -175,17 +177,17 @@ python scripts/pre_sftdatapacked.py \
     --max_seq_len 2048
 ```
 
-Packed SFT training improves training efficiency by packing multiple sequences of varying lengths into fixed-size batches, reducing padding waste and improving GPU utilization. It uses Varlen FlashAttention for efficient attention computation without explicit attention masks.
+打包式 SFT 训练通过将多个不同长度的序列打包到固定大小的批次中，减少填充浪费并提高 GPU 利用率。它使用 Varlen FlashAttention 进行高效的注意力计算，无需显式的注意力掩码。
 
-### 4. LoRA Fine-Tuning
+### 4. LoRA 微调
 
-For parameter-efficient fine-tuning, use LoRA to adapt the model with minimal resources:
+使用 LoRA 进行参数高效微调，用最少的资源适配模型：
 
 ```bash
-# Option 1: Use the launch script (runs in tmux)
+# 方式一：使用启动脚本 (在 tmux 中运行)
 bash examples/lora.sh
 
-# Option 2: Run directly with custom parameters
+# 方式二：使用自定义参数直接运行
 python train/lora.py \
     --data_path /path/to/lora_data.jsonl \
     --save_dir ./output/lora \
@@ -193,20 +195,20 @@ python train/lora.py \
     --from_weight ./output/sft/full_sft_768 \
     --epochs 5 \
     --learning_rate 1e-4 \
-    --lora_rank 16
+    --lora_rank 
+    
+# 然后可以 使用 ./scripts/merge_lora.py 进行合并 -> 8
 ```
 
-Then you can merge with `scripts/merge_lora.py` (see step 8).
+### 5. 直接偏好优化 (DPO)
 
-### 5. Direct Preference Optimization (DPO)
-
-Fine-tune the model using DPO to align with human preferences by learning from preference pairs:
+使用偏好对（chosen/rejected）对齐模型与人类偏好，无需奖励模型：
 
 ```bash
-# Option 1: Use the launch script (runs in tmux, uses --dpo_aggregate mean)
+# 方式一：使用启动脚本 (在 tmux 中运行，默认 --dpo_aggregate mean)
 bash examples/dpo.sh
 
-# Option 2: Run directly with custom parameters
+# 方式二：使用自定义参数直接运行
 python train/dpo.py \
     --data_path /path/to/dpo_data.jsonl \
     --save_dir ./output/dpo \
@@ -221,17 +223,17 @@ python train/dpo.py \
     --max_seq_len 340
 ```
 
-DPO training uses preference pairs (chosen vs rejected responses) to optimize the model's output quality without requiring a separate reward model. Use `--dpo_aggregate mean` (default for small models) or `sum` for sequence-level log-prob aggregation.
+使用 `--dpo_aggregate mean`（小模型默认）或 `sum` 控制序列级 log 概率聚合方式。
 
-### 6. Proximal Policy Optimization (PPO)
+### 6. 近端策略优化 (PPO)
 
-For advanced RLHF training using PPO with a reward model to further improve model performance:
+使用 PPO 算法和奖励模型进行 RLHF 训练，进一步提升模型性能：
 
 ```bash
-# Option 1: Use the launch script (runs in tmux)
+# 方式一：使用启动脚本 (在 tmux 中运行)
 bash examples/ppo.sh
 
-# Option 2: Run directly with custom parameters
+# 方式二：使用自定义参数直接运行
 python train/ppo.py \
     --data_path /path/to/rlaif_data.jsonl \
     --save_dir ./output/ppo \
@@ -248,27 +250,27 @@ python train/ppo.py \
     --kl_coef 0.01
 ```
 
-**PPO Key Parameters:**
+**PPO 关键参数说明：**
 
-- `--reward_model_path`: Path to the reward model for computing rewards
-- `--clip_epsilon`: PPO clipping parameter (default: 0.2)
-- `--kl_coef`: KL divergence penalty coefficient (default: 0.01)
-- `--vf_coef`: Value function loss coefficient (default: 0.5)
-- `--critic_lr_ratio`: Critic learning rate ratio to actor (default: 1.0)
-- `--update_old_actor_freq`: Frequency to update the old actor (default: 10 steps)
-- `--reasoning`: Set to 1 to enable reasoning mode with format rewards
+- `--reward_model_path`: 奖励模型路径，用于计算奖励值
+- `--clip_epsilon`: PPO 裁剪参数（默认：0.2）
+- `--kl_coef`: KL 散度惩罚系数（默认：0.01）
+- `--vf_coef`: 价值函数损失系数（默认：0.5）
+- `--critic_lr_ratio`: Critic 学习率与 Actor 的比例（默认：1.0）
+- `--update_old_actor_freq`: 更新旧 Actor 的频率（默认：10 步）
+- `--reasoning`: 设为 1 启用推理模式，增加格式奖励
 
-PPO training uses a reward model to guide the policy optimization, making it suitable for complex alignment tasks. The training involves an actor-critic architecture with KL penalty to prevent the model from deviating too far from the reference policy.
+PPO 训练使用奖励模型来引导策略优化，适用于复杂的对齐任务。训练采用 Actor-Critic 架构，并通过 KL 惩罚防止模型偏离参考策略过远。
 
-### 7. Group Relative Policy Optimization (GRPO)
+### 7. 组相对策略优化 (GRPO)
 
-For efficient RL training without a critic model, using group-relative advantages:
+无需 Critic 模型的高效 RL 训练，使用组内相对优势：
 
 ```bash
-# Option 1: Use the launch script (runs in tmux)
+# 选项1：使用启动脚本（在 tmux 中运行）
 bash examples/grpo.sh
 
-# Option 2: Run directly with custom parameters
+# 选项2：直接使用自定义参数运行
 python train/grpo.py \
     --data_path /path/to/rlaif_data.jsonl \
     --save_dir ./output/grpo \
@@ -285,18 +287,18 @@ python train/grpo.py \
     --beta 0.04
 ```
 
-**GRPO Key Parameters:**
+**GRPO 关键参数说明：**
 
-- `--reward_model_path`: Path to the reward model for computing rewards
-- `--num_generations`: Number of responses generated per prompt (default: 4)
-- `--beta`: KL divergence penalty coefficient (default: 0.04)
-- `--reasoning`: Set to 1 to enable reasoning mode with format rewards
+- `--reward_model_path`: 用于计算奖励的奖励模型路径
+- `--num_generations`: 每个提示生成的响应数量（默认：4）
+- `--beta`: KL 散度惩罚系数（默认：0.04）
+- `--reasoning`: 设置为 1 启用带格式奖励的推理模式
 
-GRPO eliminates the need for a critic model by computing relative advantages within groups of responses. This reduces memory usage and simplifies training while maintaining alignment quality.
+GRPO 通过在响应组内计算相对优势，消除了对 Critic 模型的需求。这减少了内存使用并简化了训练，同时保持了对齐质量。
 
-### 8. Merge LoRA Weights
+### 8. 合并 LoRA 权重
 
-After LoRA training, merge the adapter weights into the base model:
+LoRA 训练后，将适配器权重合并到基础模型中：
 
 ```bash
 python scripts/merge_lora.py \
@@ -304,28 +306,29 @@ python scripts/merge_lora.py \
     --lora_path ./output/lora/lora_768
 ```
 
-### 9. Model Evaluation
+### 9. 模型评估
 
-Evaluate your model interactively:
+以交互方式或自动测试模式评估模型：
 
 ```bash
+# 交互式聊天模式
 python scripts/eval_llm.py \
     --load_from ./output/lora/lora_768/checkpoint_merged \
     --use_chat_template 1
 ```
 
-### 10. Deploy with vLLM
+### 10. 使用 vLLM 部署
 
-Start a high-performance API server compatible with OpenAI's client:
+启动与 OpenAI 客户端兼容的高性能 API 服务器：
 
 ```bash
-# Start the server
+# 启动服务器
 python vllm_adapter/start_server.py ./output/lora/lora_768/checkpoint_merged
 
-# The server is now running at http://localhost:8000
+# 服务器现在运行在 http://localhost:8000
 ```
 
-### 11. Making API Requests
+### 11. 发起 API 请求
 
 ```python
 from openai import OpenAI
@@ -338,29 +341,29 @@ client = OpenAI(
 response = client.chat.completions.create(
     model="./output/lora/lora_768/checkpoint_merged",
     messages=[
-        {"role": "user", "content": "Explain the importance of Grouped Query Attention."}
+        {"role": "user", "content": "解释一下分组查询注意力的重要性。"}
     ],
 )
 print(response.choices[0].message.content)
 ```
 
-## 🤝 Contributing
+## 🤝 贡献
 
-Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+欢迎各种贡献！
 
-1.  Fork the Project
-2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4.  Push to the Branch (`git push origin feature/AmazingFeature`)
-5.  Open a Pull Request
+1.  Fork 本项目
+2.  创建您的功能分支 (`git checkout -b feature/AmazingFeature`)
+3.  提交您的更改 (`git commit -m 'Add some AmazingFeature'`)
+4.  推送到分支 (`git push origin feature/AmazingFeature`)
+5.  开启一个 Pull Request
 
-## 📜 License
+## 📜 许可证
 
-Distributed under the MIT License. See `LICENSE` for more information.
+根据 MIT 许可证分发。详见 `LICENSE` 文件。
 
-## ✒️ Citation
+## ✒️ 引用
 
-If you use VerMind in your research or work, please consider citing it:
+如果您在研究或工作中使用了 VerMind，请考虑引用：
 
 ```bibtex
 @software{vermind2026,
@@ -373,4 +376,4 @@ If you use VerMind in your research or work, please consider citing it:
 
 ---
 
-<p align="center">Made with ❤️ by nev8rz</p>
+<p align="center">由 nev8rz 用 ❤️ 制作</p>

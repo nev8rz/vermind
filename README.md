@@ -16,6 +16,12 @@
 
 <div align="center">
 
+**简体中文** · [English](./docs/README_v.md)
+
+</div>
+
+<div align="center">
+
 [![Python](https://img.shields.io/badge/Python-3.12+-blue?logo=python)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.8.0+-ee4c2c?logo=pytorch)](https://pytorch.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](https://opensource.org/licenses/MIT)

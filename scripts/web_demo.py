@@ -9,6 +9,7 @@ import sys
 import argparse
 import warnings
 import base64
+import inspect
 from pathlib import Path
 from threading import Thread
 from queue import Queue
@@ -243,12 +244,15 @@ def create_demo():
             
             # 右侧：对话区域
             with gr.Column(scale=5):
-                chatbot = gr.Chatbot(
-                    label="💬 对话",
-                    height=550,
-                    bubble_full_width=False,
-                    avatar_images=(None, None)
-                )
+                chatbot_kwargs = {
+                    "label": "💬 对话",
+                    "height": 550,
+                    "avatar_images": (None, None),
+                }
+                # gradio 版本兼容：旧版不支持 bubble_full_width
+                if "bubble_full_width" in inspect.signature(gr.Chatbot.__init__).parameters:
+                    chatbot_kwargs["bubble_full_width"] = False
+                chatbot = gr.Chatbot(**chatbot_kwargs)
                 
                 with gr.Row():
                     msg_input = gr.Textbox(

@@ -256,6 +256,7 @@ def create_demo():
                 if "type" in inspect.signature(gr.Chatbot.__init__).parameters:
                     chatbot_kwargs["type"] = "tuples"
                 chatbot = gr.Chatbot(**chatbot_kwargs)
+                chatbot_format = getattr(chatbot, "type", None) or "tuples"
                 
                 with gr.Row():
                     msg_input = gr.Textbox(
@@ -280,25 +281,54 @@ def create_demo():
                 )
         
         # 交互逻辑
+        def _ensure_history(history):
+            return history or []
+
         def user_message(message, history, image_path):
             """处理用户消息"""
             if not message.strip():
                 return "", history, image_path
             
+            history = _ensure_history(history)
+
             if image_path is None:
-                return "", history + [("请先上传图片", "❌ 请先上传一张图片再进行对话")], image_path
+                if chatbot_format == "messages":
+                    history = history + [
+                        {"role": "user", "content": "请先上传图片"},
+                        {"role": "assistant", "content": "❌ 请先上传一张图片再进行对话"},
+                    ]
+                else:
+                    history = history + [("请先上传图片", "❌ 请先上传一张图片再进行对话")]
+                return "", history, image_path
             
             # 显示用户消息（包含图片）
             image_html = f'<img src="file/{image_path}" style="max-width:100px;max-height:100px;border-radius:8px;margin-bottom:5px;"><br>'
-            history = history + [(f"{image_html}{message}", None)]
+            if chatbot_format == "messages":
+                history = history + [{"role": "user", "content": f"{image_html}{message}"}]
+            else:
+                history = history + [(f"{image_html}{message}", None)]
             return "", history, image_path
         
         def bot_response(history, image_path, temperature, top_p, max_tokens):
             """生成机器人回复"""
-            if not history or history[-1][1] is not None:
+            history = _ensure_history(history)
+            if not history:
                 return history
-            
-            user_message_text = history[-1][0]
+
+            if chatbot_format == "messages":
+                last_msg = history[-1]
+                if last_msg.get("role") == "assistant" and last_msg.get("content"):
+                    return history
+                if last_msg.get("role") == "assistant":
+                    user_message_text = history[-2]["content"] if len(history) >= 2 else ""
+                else:
+                    user_message_text = last_msg.get("content", "")
+                    history.append({"role": "assistant", "content": ""})
+            else:
+                if history[-1][1] is not None:
+                    return history
+                user_message_text = history[-1][0]
+
             # 提取纯文本（去掉图片 HTML）
             import re
             text_only = re.sub(r'<img[^>]*>', '', user_message_text).strip()
@@ -307,7 +337,10 @@ def create_demo():
             response = ""
             for new_text in generate_response(image_path, text_only, temperature, top_p, max_tokens):
                 response += new_text
-                history[-1] = (user_message_text, response)
+                if chatbot_format == "messages":
+                    history[-1]["content"] = response
+                else:
+                    history[-1] = (user_message_text, response)
                 yield history
         
         def clear_chat():

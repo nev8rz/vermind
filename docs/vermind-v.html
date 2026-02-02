@@ -655,6 +655,10 @@
             color: var(--primary-light);
         }
 
+        .training-stage pre {
+            margin: 0;
+        }
+
         .training-stage code {
             display: block;
             background: rgba(0, 0, 0, 0.4);
@@ -666,6 +670,7 @@
             color: #e2e8f0;
             border: 1px solid var(--border);
             margin-bottom: 12px;
+            white-space: pre;
         }
 
         .training-stage .note {
@@ -951,7 +956,7 @@
                             <h3 data-lang="en">Vision-Language Pre-training</h3>
                             <h3 data-lang="zh">视觉-语言预训练</h3>
                         </div>
-                        <code>bash examples/pretrain_vlm.sh</code>
+                        <pre><code>bash examples/pretrain_vlm.sh</code></pre>
                         <p class="note" data-lang="en">Freeze LLM, train only vision projector on image-text pairs</p>
                         <p class="note" data-lang="zh">冻结 LLM，仅在图文对上训练视觉投影器</p>
                     </div>
@@ -962,7 +967,7 @@
                             <h3 data-lang="en">Visual Instruction Tuning</h3>
                             <h3 data-lang="zh">视觉指令微调</h3>
                         </div>
-                        <code>bash examples/vlm_sft.sh</code>
+                        <pre><code>bash examples/vlm_sft.sh</code></pre>
                         <p class="note" data-lang="en">Full model training on visual instruction-following data</p>
                         <p class="note" data-lang="zh">在视觉指令遵循数据上进行全模型训练</p>
                     </div>
@@ -973,11 +978,11 @@
                             <h3 data-lang="en">Unified Training Script</h3>
                             <h3 data-lang="zh">统一训练脚本</h3>
                         </div>
-                        <code>python train/train_vlm.py \
+                        <pre><code>python train/train_vlm.py \
     --stage {pretrain|sft} \
     --from_weight ./output/sft/full_sft_768 \
     --data_path ./dataset/vlm_data.parquet \
-    --vision_encoder_path ./siglip-base-patch16-224</code>
+    --vision_encoder_path ./siglip-base-patch16-224</code></pre>
                     </div>
 
                     <div class="training-cta">

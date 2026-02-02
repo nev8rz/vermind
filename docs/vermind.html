@@ -551,6 +551,10 @@
             font-size: 1rem;
         }
 
+        .step pre {
+            margin: 0;
+        }
+
         .step code {
             display: block;
             background: rgba(0, 0, 0, 0.4);
@@ -562,6 +566,7 @@
             color: #e2e8f0;
             line-height: 1.5;
             border: 1px solid var(--border);
+            white-space: pre;
         }
 
         /* Models Table */
@@ -925,8 +930,8 @@
                             <h3 data-lang="en">Clone Repository</h3>
                             <h3 data-lang="zh">克隆仓库</h3>
                         </div>
-                        <code>git clone https://github.com/nev8rz/vermind.git
-cd vermind</code>
+                        <pre><code>git clone https://github.com/nev8rz/vermind.git
+cd vermind</code></pre>
                     </div>
                     <div class="step">
                         <div class="step-header">
@@ -934,7 +939,7 @@ cd vermind</code>
                             <h3 data-lang="en">Install Dependencies</h3>
                             <h3 data-lang="zh">安装依赖</h3>
                         </div>
-                        <code>pip install -r requirements.txt</code>
+                        <pre><code>pip install -r requirements.txt</code></pre>
                     </div>
                     <div class="step">
                         <div class="step-header">
@@ -942,7 +947,7 @@ cd vermind</code>
                             <h3 data-lang="en">Start Training</h3>
                             <h3 data-lang="zh">开始训练</h3>
                         </div>
-                        <code>bash examples/pretrain.sh</code>
+                        <pre><code>bash examples/pretrain.sh</code></pre>
                     </div>
                 </div>
             </div>
@@ -974,25 +979,11 @@ cd vermind</code>
                         </thead>
                         <tbody>
                             <tr>
-                                <td>VerMind-Small</td>
-                                <td>~100M</td>
-                                <td>12</td>
-                                <td>768</td>
-                                <td>12</td>
-                            </tr>
-                            <tr>
-                                <td>VerMind-Base</td>
-                                <td>~400M</td>
-                                <td>24</td>
-                                <td>1024</td>
+                                <td>VerMind</td>
+                                <td>~104M</td>
                                 <td>16</td>
-                            </tr>
-                            <tr>
-                                <td>VerMind-Large</td>
-                                <td>~1B</td>
-                                <td>32</td>
-                                <td>2048</td>
-                                <td>32</td>
+                                <td>768</td>
+                                <td>16</td>
                             </tr>
                         </tbody>
                     </table>

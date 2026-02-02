@@ -252,6 +252,9 @@ def create_demo():
                 # gradio 版本兼容：旧版不支持 bubble_full_width
                 if "bubble_full_width" in inspect.signature(gr.Chatbot.__init__).parameters:
                     chatbot_kwargs["bubble_full_width"] = False
+                # gradio 新版默认 messages，显式使用 tuples 兼容旧格式
+                if "type" in inspect.signature(gr.Chatbot.__init__).parameters:
+                    chatbot_kwargs["type"] = "tuples"
                 chatbot = gr.Chatbot(**chatbot_kwargs)
                 
                 with gr.Row():

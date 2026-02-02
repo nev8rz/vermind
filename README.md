@@ -54,7 +54,7 @@
 
 VerMind 的架构是一个为性能和可扩展性而优化的仅解码器 Transformer 模型。核心组件设计得既高效又易于理解。
 
-![VerMind Architecture](https://raw.githubusercontent.com/nev8rz/vermind/main/docs/assets/architecture.png)
+![VerMind Architecture](https://raw.githubusercontent.com/nev8rz/vermind/main/docs/assets/vermind_st.png)
 ## 📊 评估结果
 
 VerMind 在中文语言理解基准测试中的表现（768 隐藏层大小模型）：

@@ -510,6 +510,21 @@
             transform: translateY(-2px);
         }
 
+        .arch-diagram {
+            max-width: 1000px;
+            margin: 0 auto 48px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .arch-diagram img {
+            max-width: 100%;
+            border-radius: 8px;
+        }
+
         .arch-detail-item h4 {
             color: var(--primary-light);
             font-size: 0.95rem;
@@ -853,59 +868,9 @@
                     <p data-lang="zh">三组件架构实现无缝多模态集成</p>
                 </div>
 
-                <div class="arch-flow-container">
-                    <div class="arch-flow">
-                        <div class="arch-box">
-                            <div class="arch-box-icon">🔮</div>
-                            <h4 data-lang="en">Vision Encoder</h4>
-                            <h4 data-lang="zh">视觉编码器</h4>
-                            <p data-lang="en">CLIP / SigLIP ViT</p>
-                            <p data-lang="zh">CLIP / SigLIP ViT</p>
-                        </div>
-                        <span class="arch-arrow">→</span>
-                        <div class="arch-box">
-                            <div class="arch-box-icon">🔄</div>
-                            <h4 data-lang="en">Projector</h4>
-                            <h4 data-lang="zh">投影器</h4>
-                            <p data-lang="en">MLP / Linear Adapter</p>
-                            <p data-lang="zh">MLP / 线性适配器</p>
-                        </div>
-                        <span class="arch-arrow">→</span>
-                        <div class="arch-box">
-                            <div class="arch-box-icon">🧠</div>
-                            <h4 data-lang="en">VerMind LLM</h4>
-                            <h4 data-lang="zh">VerMind LLM</h4>
-                            <p data-lang="en">Decoder-only LM</p>
-                            <p data-lang="zh">仅解码器 LM</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="arch-details">
-                    <div class="arch-detail-item">
-                        <h4 data-lang="en">Vision Encoder</h4>
-                        <h4 data-lang="zh">视觉编码器</h4>
-                        <p data-lang="en">Encodes images into visual tokens</p>
-                        <p data-lang="zh">将图像编码为视觉 token</p>
-                    </div>
-                    <div class="arch-detail-item">
-                        <h4 data-lang="en">Projector</h4>
-                        <h4 data-lang="zh">投影器</h4>
-                        <p data-lang="en">Aligns visual features with LM</p>
-                        <p data-lang="zh">将视觉特征与 LM 对齐</p>
-                    </div>
-                    <div class="arch-detail-item">
-                        <h4 data-lang="en">VerMind LLM</h4>
-                        <h4 data-lang="zh">VerMind LLM</h4>
-                        <p data-lang="en">GQA + SwiGLU backbone</p>
-                        <p data-lang="zh">GQA + SwiGLU 主干网络</p>
-                    </div>
-                    <div class="arch-detail-item">
-                        <h4 data-lang="en">Unified Training</h4>
-                        <h4 data-lang="zh">统一训练</h4>
-                        <p data-lang="en">End-to-end on multimodal data</p>
-                        <p data-lang="zh">在多模态数据上端到端训练</p>
-                    </div>
+                <div class="arch-diagram">
+                    <img src="https://raw.githubusercontent.com/nev8rz/vermind/main/docs/assets/vermind-v_st.png"
+                        alt="VerMind-V Architecture">
                 </div>
             </div>
         </section>

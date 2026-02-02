@@ -155,49 +155,6 @@
             padding: 160px 0 100px;
             text-align: center;
         }
-
-        /* Demo Section */
-        .demo {
-            padding: 80px 0;
-        }
-
-        .demo-grid {
-            display: grid;
-            grid-template-columns: 1.2fr 0.8fr;
-            gap: 32px;
-            align-items: center;
-        }
-
-        .demo-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 24px;
-        }
-
-        .demo-image {
-            width: 100%;
-            height: auto;
-            border-radius: 14px;
-            border: 1px solid var(--border);
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
-        }
-
-        .demo-code {
-            background: rgba(15, 23, 42, 0.8);
-            padding: 16px;
-            border-radius: 10px;
-            overflow-x: auto;
-            font-size: 0.85rem;
-            border: 1px solid var(--border);
-        }
-
-        .demo-list {
-            margin-top: 12px;
-            padding-left: 18px;
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-        }
         
         .hero-badge {
             display: inline-flex;
@@ -513,10 +470,6 @@
             .section-title {
                 font-size: 2rem;
             }
-
-            .demo-grid {
-                grid-template-columns: 1fr;
-            }
         }
     </style>
 </head>
@@ -534,7 +487,6 @@
                 </svg>
             </button>
             <ul class="nav-links" id="navLinks">
-                <li><a href="#demo" data-lang="en">Demo</a><a href="#demo" data-lang="zh">演示</a></li>
                 <li><a href="#architecture" data-lang="en">Architecture</a><a href="#architecture" data-lang="zh">架构</a></li>
                 <li><a href="#features" data-lang="en">Features</a><a href="#features" data-lang="zh">功能</a></li>
                 <li>
@@ -572,36 +524,6 @@
                     <span data-lang="en">View on GitHub</span>
                     <span data-lang="zh">在 GitHub 上查看</span>
                 </a>
-            </div>
-        </div>
-    </section>
-
-    <section class="demo" id="demo">
-        <div class="container">
-            <h2 class="section-title" data-lang="en">Web Demo</h2>
-            <h2 class="section-title" data-lang="zh">网页演示</h2>
-            <p class="section-subtitle" data-lang="en">A lightweight Gradio UI for multimodal chat with VerMind-V</p>
-            <p class="section-subtitle" data-lang="zh">轻量级 Gradio 界面，支持多模态对话</p>
-
-            <div class="demo-grid">
-                <div class="demo-card">
-                    <img src="assets/vlm_sample.png" alt="VerMind-V Web Demo" class="demo-image">
-                </div>
-                <div class="demo-card">
-                    <h3 data-lang="en">Run Locally</h3>
-                    <h3 data-lang="zh">本地启动</h3>
-                    <pre class="demo-code"><code>python scripts/web_demo.py \
-  --model_path ./output/vlm/vlm_base \
-  --device cuda</code></pre>
-                    <ul class="demo-list">
-                        <li data-lang="en">Upload an image in the left panel</li>
-                        <li data-lang="zh">在左侧面板上传图片</li>
-                        <li data-lang="en">Ask questions or request a detailed caption</li>
-                        <li data-lang="zh">输入问题或请求详细描述</li>
-                        <li data-lang="en">Supports streaming responses</li>
-                        <li data-lang="zh">支持流式输出</li>
-                    </ul>
-                </div>
             </div>
         </div>
     </section>

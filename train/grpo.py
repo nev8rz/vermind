@@ -8,7 +8,6 @@ import re
 import time
 import warnings
 import torch
-import torch.nn.functional as F
 import torch.distributed as dist
 import swanlab
 from contextlib import nullcontext
@@ -59,7 +58,7 @@ def calculate_rewards(prompts, responses, reward_model, reward_tokenizer, device
                 format_rewards.append(0.0)
         rewards = rewards + torch.tensor(format_rewards, device=device)
         
-        # 标记奖励（防止严格奖励稀疏）
+
         def mark_num(text):
             reward = 0
             if text.count("<think>") == 1:
@@ -78,11 +77,11 @@ def calculate_rewards(prompts, responses, reward_model, reward_tokenizer, device
     
     rewards = torch.zeros(len(responses), device=device)
     
-    # 格式奖励（仅推理模式）
+
     if reasoning == 1:
         rewards = reasoning_model_reward(rewards)
     
-    # 使用 reward model 计算奖励
+
     if reward_model is not None:
         with torch.no_grad():
             reward_model_scores = []
@@ -95,7 +94,7 @@ def calculate_rewards(prompts, responses, reward_model, reward_tokenizer, device
                     response = responses[response_idx]
                     prompt = prompts[i]
                     
-                    # 解析 prompt 中的对话历史
+
                     pattern = r"<\|im_start\|>(system|user|assistant)\s+(.*?)<\|im_end\|>"
                     matches = re.findall(pattern, prompt, re.DOTALL)
                     messages = [{"role": role, "content": content.strip()} for role, content in matches]
@@ -106,7 +105,7 @@ def calculate_rewards(prompts, responses, reward_model, reward_tokenizer, device
                         score = reward_model.get_score(reward_tokenizer, tmp_chat)
                         score = max(min(score, scale), -scale)
                         
-                        # 当 reasoning=1 时，额外计算 <answer> 内容的奖励
+
                         if reasoning == 1:
                             answer_match = re.search(r'<answer>(.*?)</answer>', response, re.DOTALL)
                             if answer_match:
@@ -161,7 +160,7 @@ def grpo_train_epoch(epoch, loader, iters, model, ref_model, reward_model, rewar
     for step, batch in enumerate(loader, start=start_step + 1):
         prompts = batch['prompt']  # list[str], length B
         
-        # 编码 prompt
+
         prompt_inputs = tokenizer(
             prompts, 
             return_tensors="pt", 
@@ -175,7 +174,7 @@ def grpo_train_epoch(epoch, loader, iters, model, ref_model, reward_model, rewar
             prompt_inputs["input_ids"] = prompt_inputs["input_ids"][:, -args.max_seq_len:]
             prompt_inputs["attention_mask"] = prompt_inputs["attention_mask"][:, -args.max_seq_len:]
         
-        # 使用模型生成多个响应
+
         with torch.no_grad():
             model_for_gen = model.module if isinstance(model, DistributedDataParallel) else model
             outputs = model_for_gen.generate(
@@ -190,31 +189,31 @@ def grpo_train_epoch(epoch, loader, iters, model, ref_model, reward_model, rewar
         
         completion_ids = outputs[:, prompt_inputs["input_ids"].size(1):]  # [B*num_gen, R]
         
-        # 计算当前策略的 per-token log probabilities
+
         with autocast_ctx:
             per_token_logps = get_per_token_logps(model, outputs, completion_ids.size(1))  # [B*num_gen, R]
             res = model(outputs) if lm_config.use_moe else None
             aux_loss = res.aux_loss if res is not None else torch.tensor(0.0, device=args.device)
         
-        # 计算参考模型的 per-token log probabilities
+
         with torch.no_grad():
             ref_per_token_logps = get_per_token_logps(ref_model, outputs, completion_ids.size(1))  # [B*num_gen, R]
         
-        # 解码响应并计算奖励
+
         completions = tokenizer.batch_decode(completion_ids, skip_special_tokens=True)
         rewards = calculate_rewards(
             prompts, completions, reward_model, reward_tokenizer,
             args.device, args.num_generations, args.reasoning
         )  # [B*num_gen]
         
-        # 计算组内相对优势
+
         grouped_rewards = rewards.view(-1, args.num_generations)  # [B, num_gen]
         mean_r = grouped_rewards.mean(dim=1).repeat_interleave(args.num_generations)  # [B*num_gen]
         std_r = grouped_rewards.std(dim=1).repeat_interleave(args.num_generations)  # [B*num_gen]
         advantages = torch.clamp((rewards - mean_r) / (std_r + 1e-4), -10, 10)
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)  # [B*num_gen]
         
-        # 创建 completion mask（处理 eos）
+
         is_eos = completion_ids == tokenizer.eos_token_id  # [B*num_gen, R]
         eos_idx = torch.full((is_eos.size(0),), is_eos.size(1), dtype=torch.long, device=args.device)
         eos_idx[is_eos.any(dim=1)] = is_eos.int().argmax(dim=1)[is_eos.any(dim=1)]
@@ -222,11 +221,11 @@ def grpo_train_epoch(epoch, loader, iters, model, ref_model, reward_model, rewar
             torch.arange(is_eos.size(1), device=args.device).expand(is_eos.size(0), -1) <= eos_idx.unsqueeze(1)
         ).int()  # [B*num_gen, R]
         
-        # 计算 KL 散度（相对于参考模型）
+
         kl_div = ref_per_token_logps - per_token_logps
         per_token_kl = torch.exp(kl_div) - kl_div - 1  # [B*num_gen, R]
         
-        # 计算 GRPO 损失
+
         # policy gradient with KL penalty
         per_token_loss = -(
             torch.exp(per_token_logps - per_token_logps.detach()) * advantages.unsqueeze(1) 
@@ -247,7 +246,7 @@ def grpo_train_epoch(epoch, loader, iters, model, ref_model, reward_model, rewar
             scheduler.step()
             optimizer.zero_grad(set_to_none=True)
         
-        # 日志记录
+
         if (step % args.log_interval == 0 or step == iters) and is_main_process():
             spend_time = time.time() - start_time
             policy_loss_val = loss.item() * args.accumulation_steps
@@ -272,7 +271,7 @@ def grpo_train_epoch(epoch, loader, iters, model, ref_model, reward_model, rewar
                     "learning_rate": current_lr,
                 })
         
-        # 保存 checkpoint
+
         if (step % args.save_interval == 0 or step == iters - 1) and is_main_process():
             model.eval()
             save_checkpoint(
@@ -291,7 +290,7 @@ def grpo_train_epoch(epoch, loader, iters, model, ref_model, reward_model, rewar
             )
             model.train()
         
-        # 清理内存
+
         del prompt_inputs, outputs, completion_ids, per_token_logps, ref_per_token_logps
         del completions, rewards, grouped_rewards, mean_r, std_r, advantages
         del completion_mask, kl_div, per_token_kl, per_token_loss, policy_loss, loss
@@ -299,7 +298,7 @@ def grpo_train_epoch(epoch, loader, iters, model, ref_model, reward_model, rewar
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="VerMind GRPO Training")
-    # 基础训练参数
+
     parser.add_argument("--save_dir", type=str, default="./output/grpo", help="模型保存目录")
     parser.add_argument('--save_weight', default='grpo', type=str, help="保存权重的前缀名")
     parser.add_argument("--epochs", type=int, default=3, help="训练轮数")
@@ -316,7 +315,7 @@ if __name__ == "__main__":
     parser.add_argument("--save_interval", type=int, default=100, help="模型保存间隔")
     parser.add_argument("--max_checkpoints", type=int, default=3, help="最大保留的 checkpoint 数量")
 
-    # 模型参数
+
     parser.add_argument('--hidden_size', default=768, type=int, help="隐藏层维度")
     parser.add_argument('--num_hidden_layers', default=16, type=int, help="隐藏层数量")
     parser.add_argument('--num_attention_heads', default=8, type=int, help="注意力头数（query heads）")
@@ -325,7 +324,7 @@ if __name__ == "__main__":
     parser.add_argument('--max_gen_len', default=256, type=int, help="生成的最大长度")
     parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1], help="是否使用MoE架构")
 
-    # 数据和权重路径
+
     parser.add_argument("--data_path", type=str, default="../dataset/rlaif.jsonl", help="RLAIF训练数据路径")
     parser.add_argument("--tokenizer_path", type=str, default="../vermind_tokenizer", help="tokenizer路径")
     parser.add_argument('--from_weight', default='none', type=str, help="初始权重路径")
@@ -333,24 +332,24 @@ if __name__ == "__main__":
     parser.add_argument('--reward_model_path', type=str, default='', help="奖励模型路径（留空则不使用外部奖励模型）")
     parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="是否自动检测&续训")
 
-    # GRPO 特定参数
+
     parser.add_argument("--beta", type=float, default=0.04, help="KL 惩罚系数")
     parser.add_argument("--temperature", type=float, default=0.8, help="生成温度")
     parser.add_argument("--reasoning", type=int, default=0, choices=[0, 1], help="是否训练推理模型（增加格式奖励）")
 
-    # 其他
+
     parser.add_argument("--use_swanlab", action="store_true", help="是否使用swanlab")
     parser.add_argument("--swanlab_project", type=str, default="VerMind-GRPO", help="swanlab项目名")
     parser.add_argument("--use_compile", default=0, type=int, choices=[0, 1], help="是否使用torch.compile加速")
     args = parser.parse_args()
 
-    # ========== 1. 初始化环境和随机种子 ==========
+
     local_rank = init_distributed_mode()
     if dist.is_initialized():
         args.device = f"cuda:{local_rank}"
     setup_seed(42 + (dist.get_rank() if dist.is_initialized() else 0))
 
-    # ========== 2. 配置目录、模型参数 ==========
+
     os.makedirs(args.save_dir, exist_ok=True)
     lm_config = VerMindConfig(
         hidden_size=args.hidden_size,
@@ -360,7 +359,7 @@ if __name__ == "__main__":
         use_moe=bool(args.use_moe)
     )
 
-    # 检查 resume checkpoint
+
     training_state = None
     resume_path = None
     if args.from_resume == 1:
@@ -374,12 +373,12 @@ if __name__ == "__main__":
                 Logger(f'Failed to resume from {resume_path}: {e}')
                 training_state = None
 
-    # ========== 3. 设置混合精度 ==========
+
     device_type = "cuda" if "cuda" in args.device else "cpu"
     dtype = torch.bfloat16 if args.dtype == "bfloat16" else torch.float16
     autocast_ctx = nullcontext() if device_type == "cpu" else torch.amp.autocast('cuda', dtype=dtype)
 
-    # ========== 4. 配置 swanlab ==========
+
     swanlab_run = None
     if args.use_swanlab and is_main_process():
         swanlab_id = training_state.get('swanlab_id') if training_state else None
@@ -388,7 +387,7 @@ if __name__ == "__main__":
         swanlab.init(project=args.swanlab_project, name=swanlab_run_name, id=swanlab_id, resume=resume)
         swanlab_run = swanlab.get_run()
 
-    # ========== 5. 加载参考模型 (ref_model) ==========
+
     Logger('Loading reference model...')
     if os.path.isdir(args.ref_weight):
         import glob
@@ -426,7 +425,7 @@ if __name__ == "__main__":
         param.requires_grad = False
     Logger('Reference model loaded and frozen')
 
-    # ========== 6. 加载奖励模型（可选） ==========
+
     reward_model = None
     reward_tokenizer = None
     if args.reward_model_path:
@@ -448,7 +447,7 @@ if __name__ == "__main__":
             reward_model = None
             reward_tokenizer = None
 
-    # ========== 7. 定义 Actor 模型 ==========
+
     if training_state is not None:
         actor_model, tokenizer, _ = load_checkpoint(resume_path, device=args.device, load_training_state=False)
         Logger('Actor model and tokenizer loaded from resume checkpoint')
@@ -490,21 +489,21 @@ if __name__ == "__main__":
         actor_model = torch.compile(actor_model)
         Logger('torch.compile enabled for actor')
 
-    # ========== 8. 数据加载器和优化器 ==========
+
     train_ds = RLAIFDataset(args.data_path, tokenizer, max_length=args.max_seq_len)
     train_sampler = DistributedSampler(train_ds) if dist.is_initialized() else None
     scaler = torch.amp.GradScaler('cuda', enabled=(args.dtype == 'float16'))
 
     optimizer = optim.AdamW(actor_model.parameters(), lr=args.learning_rate)
 
-    # 学习率调度器
+
     total_steps = args.epochs * (len(train_ds) // (args.batch_size * args.accumulation_steps * (dist.get_world_size() if dist.is_initialized() else 1)))
     scheduler = optim.lr_scheduler.LambdaLR(
         optimizer,
         lr_lambda=lambda step: get_lr(step, total_steps, 1.0, args.warmup_ratio)
     )
 
-    # ========== 9. 从 checkpoint 恢复状态 ==========
+
     start_epoch, start_step = 0, 0
     if training_state:
         optimizer.load_state_dict(training_state['optimizer'])
@@ -512,7 +511,7 @@ if __name__ == "__main__":
         start_epoch = training_state['epoch']
         start_step = training_state.get('step', 0)
 
-    # ========== 10. DDP 包装模型 ==========
+
     if dist.is_initialized():
         actor_model._ddp_params_and_buffers_to_ignore = {"freqs_cos", "freqs_sin"}
         actor_model = DistributedDataParallel(actor_model, device_ids=[local_rank])
@@ -520,14 +519,14 @@ if __name__ == "__main__":
         ref_model._ddp_params_and_buffers_to_ignore = {"freqs_cos", "freqs_sin"}
         ref_model = DistributedDataParallel(ref_model, device_ids=[local_rank])
 
-    # ========== 11. 确定基础保存路径 ==========
+
     moe_suffix = '_moe' if lm_config.use_moe else ''
     original_save_path = f'{args.save_dir}/{args.save_weight}_{lm_config.hidden_size}{moe_suffix}'
     base_save_path = get_base_save_path(original_save_path)
     if is_main_process():
         Logger(f'Base save path determined: {os.path.basename(base_save_path)}')
 
-    # ========== 12. 开始训练 ==========
+
     Logger(f'Starting GRPO training: {args.epochs} epochs, batch_size={args.batch_size}, num_generations={args.num_generations}')
     for epoch in range(start_epoch, args.epochs):
         train_sampler and train_sampler.set_epoch(epoch)
@@ -562,10 +561,10 @@ if __name__ == "__main__":
             base_save_path=base_save_path
         )
 
-        # 重置 start_step
+
         start_step = 0
 
-    # ========== 13. 清理分布式进程 ==========
+
     if dist.is_initialized():
         dist.destroy_process_group()
 

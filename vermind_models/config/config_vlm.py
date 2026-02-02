@@ -8,7 +8,7 @@ class VLMConfig(VerMindConfig):
     def __init__(
             self,
             image_special_token: str = '<image>', 
-            image_ids: List = [34] * 196,  # SigLIP 14x14 = 196 tokens, 无 pooling 
+            image_ids: List = [34] * 196,
             **kwargs,
     ):
         self.image_special_token = image_special_token

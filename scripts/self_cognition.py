@@ -55,7 +55,7 @@ def generate_vermind_data_batch(batch_num, total_batches, retry=True):
     for attempt in range(1, max_attempts + 1):
         try:
             response = client.chat.completions.create(
-                model="DeepSeek-V3.2", # 建议使用能力较强的模型以保证指令遵循
+                model="DeepSeek-V3.2",
                 messages=[
                     {"role": "system", "content": "你是一个严谨的数据生成助手，只输出 JSON。"},
                     {"role": "user", "content": prompt}
@@ -65,7 +65,7 @@ def generate_vermind_data_batch(batch_num, total_batches, retry=True):
 
             content = response.choices[0].message.content
             
-            # 清理可能存在的 Markdown 标记
+
             if "```" in content:
                 content = content.replace("```json", "").replace("```", "").strip()
 
@@ -96,33 +96,33 @@ def generate_vermind_data(total_samples=80, batch_size=10, output_path=None):
     if output_path is None:
         output_path = "/root/vermind/dataset/lora_self_cognition.jsonl"
     
-    # 确保输出目录存在
+
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     
-    # 如果文件已存在，询问是否追加或覆盖
+
     file_exists = os.path.exists(output_path)
     if file_exists:
         print(f"⚠️  文件已存在: {output_path}")
         print("   将追加新数据到文件末尾")
-        file_mode = "a"  # 追加模式
+        file_mode = "a"
     else:
-        file_mode = "w"  # 新建模式
+        file_mode = "w"
     
     total_batches = total_samples // batch_size
     total_generated = 0
     failed_batches = 0
     
-    # 打开文件（追加模式）
+
     with open(output_path, file_mode, encoding="utf-8") as f:
         for i in range(1, total_batches + 1):
             print(f"\n正在生成第 {i}/{total_batches} 批数据...")
             batch_data = generate_vermind_data_batch(i, total_batches, retry=True)
             
             if batch_data:
-                # 立即写入文件
+
                 for entry in batch_data:
                     f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-                    f.flush()  # 确保立即写入磁盘
+                    f.flush()
                 
                 total_generated += len(batch_data)
                 print(f"✅ 第 {i} 批完成，已生成 {len(batch_data)} 条数据")
@@ -141,7 +141,7 @@ def generate_vermind_data(total_samples=80, batch_size=10, output_path=None):
     return total_generated
 
 
-# 执行生成（500条数据，分50次调用，每次10条）
+
 if __name__ == "__main__":
     output_path = "/root/vermind/dataset/lora_self_cognition.jsonl"
     generate_vermind_data(total_samples=250, batch_size=10, output_path=output_path)

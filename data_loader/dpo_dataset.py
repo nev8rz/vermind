@@ -49,14 +49,14 @@ class DPODataset(Dataset):
     def __getitem__(self, index):
         sample = self.samples[index]
         
-        # 处理 chosen 数据
+
         chosen_prompt = self.create_chat_prompt(sample['chosen'])
         chosen_input_ids = self.tokenizer(chosen_prompt).input_ids[:self.max_length]
         chosen_input_ids += [self.tokenizer.pad_token_id] * (self.max_length - len(chosen_input_ids))
         chosen_labels = self.generate_labels(chosen_input_ids)
         chosen_mask = torch.tensor([1 if label != -100 else 0 for label in chosen_labels], dtype=torch.float)
         
-        # 处理 rejected 数据
+
         rejected_prompt = self.create_chat_prompt(sample['rejected'])
         rejected_input_ids = self.tokenizer(rejected_prompt).input_ids[:self.max_length]
         rejected_input_ids += [self.tokenizer.pad_token_id] * (self.max_length - len(rejected_input_ids))

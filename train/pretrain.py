@@ -22,20 +22,20 @@ warnings.filterwarnings('ignore')
 
 
 def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None, lm_config=None, base_save_path=None):
-    start_time = time.time() # 开始时间
+    start_time = time.time()
     for step, (input_ids, labels) in enumerate(loader, start=start_step + 1):
-        input_ids = input_ids.to(args.device) # 将input_ids移动到设备
-        labels = labels.to(args.device) # 将labels移动到设备
-        lr = get_lr(epoch * iters + step, args.epochs * iters, args.learning_rate, args.warmup_ratio) # 获取学习率
-        for param_group in optimizer.param_groups: # 遍历优化器参数组
-            param_group['lr'] = lr # 设置学习率
+        input_ids = input_ids.to(args.device)
+        labels = labels.to(args.device)
+        lr = get_lr(epoch * iters + step, args.epochs * iters, args.learning_rate, args.warmup_ratio)
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = lr
 
-        with autocast_ctx: # 混合精度训练
+        with autocast_ctx:
             res = model(input_ids, labels=labels)
             loss = res.loss + res.aux_loss
-            loss = loss / args.accumulation_steps # 损失除以梯度累积步数
+            loss = loss / args.accumulation_steps
 
-        scaler.scale(loss).backward() # 梯度累积
+        scaler.scale(loss).backward()
 
         if (step + 1) % args.accumulation_steps == 0:
             scaler.unscale_(optimizer)
@@ -59,7 +59,7 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
 
         if (step % args.save_interval == 0 or step == iters - 1) and is_main_process():
             model.eval()
-            # 使用在训练开始前确定的基础路径
+
             save_checkpoint(
                 model=model,
                 tokenizer=tokenizer,
@@ -110,26 +110,26 @@ if __name__ == "__main__":
     parser.add_argument("--use_compile", default=0, type=int, choices=[0, 1], help="是否使用torch.compile加速（0=否，1=是）")
     args = parser.parse_args()
 
-    # ========== 1. 初始化环境和随机种子 ==========
+
     local_rank = init_distributed_mode()
     if dist.is_initialized(): args.device = f"cuda:{local_rank}"
     setup_seed(42 + (dist.get_rank() if dist.is_initialized() else 0))
     
-    # ========== 2. 配置目录、模型参数、检查ckp ==========
-    os.makedirs(args.save_dir, exist_ok=True) # 创建保存目录
+
+    os.makedirs(args.save_dir, exist_ok=True)
     lm_config = VerMindConfig(
         hidden_size=args.hidden_size, 
         num_hidden_layers=args.num_hidden_layers, 
         num_attention_heads=args.num_attention_heads,
         num_key_value_heads=args.num_key_value_heads,
         use_moe=bool(args.use_moe)
-    ) # 配置模型参数
+    )
     
-    # 检查 resume checkpoint（使用新的 transformers 接口）
+
     training_state = None
     resume_path = None
     if args.from_resume == 1:
-        # 尝试从标准 transformers 格式目录恢复
+
         moe_suffix = '_moe' if lm_config.use_moe else ''
         resume_path = f'../checkpoints/{args.save_weight}_{lm_config.hidden_size}{moe_suffix}'
         if os.path.exists(resume_path) and os.path.isdir(resume_path):
@@ -140,12 +140,12 @@ if __name__ == "__main__":
                 Logger(f'Failed to resume from {resume_path}: {e}')
                 training_state = None
     
-    # ========== 3. 设置混合精度 ==========
+
     device_type = "cuda" if "cuda" in args.device else "cpu"
     dtype = torch.bfloat16 if args.dtype == "bfloat16" else torch.float16 #
-    autocast_ctx = nullcontext() if device_type == "cpu" else torch.amp.autocast('cuda', dtype=dtype) # 混合精度训练上下文
+    autocast_ctx = nullcontext() if device_type == "cpu" else torch.amp.autocast('cuda', dtype=dtype)
     
-    # ========== 4. 配swanlab ==========
+
     swanlab_run = None
     if args.use_swanlab and is_main_process():
         swanlab_id = training_state.get('swanlab_id') if training_state else None
@@ -154,33 +154,33 @@ if __name__ == "__main__":
         swanlab.init(project=args.swanlab_project, name=swanlab_run_name, id=swanlab_id, resume=resume)
         swanlab_run = swanlab.get_run()
     
-    # ========== 5. 定义模型、数据、优化器 ==========
-    # 初始化模型和 tokenizer
+
+
     if training_state is not None:
-        # 从 resume checkpoint 加载
+
         model, tokenizer, _ = load_checkpoint(resume_path, device=args.device, load_training_state=False)
         Logger('Model and tokenizer loaded from resume checkpoint')
     elif args.from_weight != 'none':
-        # 从指定权重加载
+
         if os.path.isdir(args.from_weight):
-            # 如果是目录，检查是否是基础路径（包含 checkpoint_* 子目录）还是具体的 checkpoint 路径
+
             import glob
             checkpoint_pattern = os.path.join(args.from_weight, "checkpoint_*")
             checkpoints = [p for p in glob.glob(checkpoint_pattern) if os.path.isdir(p)]
             
             if checkpoints:
-                # 如果是基础路径（包含多个 checkpoint），自动选择最新的
+
                 checkpoints.sort(key=lambda x: int(os.path.basename(x).replace("checkpoint_", "")))
                 latest_checkpoint = checkpoints[-1]
                 Logger(f'Found {len(checkpoints)} checkpoints, using latest: {os.path.basename(latest_checkpoint)}')
                 model, tokenizer, _ = load_checkpoint(latest_checkpoint, device=args.device, load_training_state=False)
                 Logger(f'Model and tokenizer loaded from {latest_checkpoint}')
             else:
-                # 如果是具体的 checkpoint 目录，直接加载
+
                 model, tokenizer, _ = load_checkpoint(args.from_weight, device=args.device, load_training_state=False)
                 Logger(f'Model and tokenizer loaded from {args.from_weight}')
         else:
-            # 兼容旧格式：从 .pth 文件加载
+
             model = VerMindForCausalLM(lm_config)
             tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path)
             moe_suffix = '_moe' if lm_config.use_moe else ''
@@ -194,23 +194,23 @@ if __name__ == "__main__":
                 Logger(f'Model weights loaded from {weight_path}')
             model = model.to(args.device)
     else:
-        # 从头开始训练
+
         model = VerMindForCausalLM(lm_config)
         tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path)
         model = model.to(args.device)
         Logger('Model initialized from scratch')
     
     if args.use_compile == 1: 
-        model = torch.compile(model) # 使用torch.compile加速模型
+        model = torch.compile(model)
         Logger('torch.compile enabled')
     
-    train_ds = PretrainDataset(args.data_path, tokenizer, max_length=args.max_seq_len) # 初始化数据集
-    train_sampler = DistributedSampler(train_ds) if dist.is_initialized() else None # 分布式采样器
+    train_ds = PretrainDataset(args.data_path, tokenizer, max_length=args.max_seq_len)
+    train_sampler = DistributedSampler(train_ds) if dist.is_initialized() else None
     scaler = torch.amp.GradScaler('cuda', enabled=(args.dtype == 'float16')) 
-    # 梯度缩放器，只需要在 dtype 为 float16 时启用，因为float16的数值范围更小，容易下溢为0
-    optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate) # 优化器
+
+    optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate)
     
-    # ========== 6. 从ckp恢复状态 ==========
+
     start_epoch, start_step = 0, 0
     if training_state:
         optimizer.load_state_dict(training_state['optimizer'])
@@ -218,33 +218,33 @@ if __name__ == "__main__":
         start_epoch = training_state['epoch']
         start_step = training_state.get('step', 0)
     
-    # ========== 7. DDP包模型 ==========
+
     if dist.is_initialized():
         model._ddp_params_and_buffers_to_ignore = {"freqs_cos", "freqs_sin"}
-        # 忽略freqs_cos和freqs_sin，ddp时候，由于每张卡的seq_length不同，会导致freqs_cos和freqs_sin的shape不同，导致ddp失败，所以不要同步freqs_cos和freqs_sin
+
         model = DistributedDataParallel(model, device_ids=[local_rank])
     
-    # ========== 7.5. 确定基础保存路径（在训练开始前确定一次） ==========
+
     moe_suffix = '_moe' if lm_config.use_moe else ''
     original_save_path = f'{args.save_dir}/{args.save_weight}_{lm_config.hidden_size}{moe_suffix}'
     base_save_path = get_base_save_path(original_save_path)
     if is_main_process():
         Logger(f'Base save path determined: {os.path.basename(base_save_path)}')
     
-    # ========== 8. 开始训练 ==========
+
     for epoch in range(start_epoch, args.epochs):
         train_sampler and train_sampler.set_epoch(epoch)
         setup_seed(42 + epoch); 
         indices = torch.randperm(len(train_ds)).tolist()
         skip = start_step if (epoch == start_epoch and start_step > 0) else 0
-        batch_sampler = SkipBatchSampler(train_sampler or indices, args.batch_size, skip) # 跳过步数采样器
+        batch_sampler = SkipBatchSampler(train_sampler or indices, args.batch_size, skip)
         loader = DataLoader(train_ds, batch_sampler=batch_sampler, num_workers=args.num_workers, pin_memory=True)
-        # 标准 ddp 多卡数据加载方式，pin_memory=True 把数据提前拷贝到 CUDA 固定内存（pinned memory），提升数据加载速度
-        if skip > 0: # 如果跳过步数大于0，则打印日志，一般是resume模式
+
+        if skip > 0:
             Logger(f'Epoch [{epoch + 1}/{args.epochs}]: 跳过前{start_step}个step，从step {start_step + 1}开始')
             train_epoch(epoch, loader, len(loader) + skip, start_step, swanlab_run, tokenizer, lm_config, base_save_path)
         else:
             train_epoch(epoch, loader, len(loader), 0, swanlab_run, tokenizer, lm_config, base_save_path)
     
-    # ========== 9. 清理分布进程 ==========
+
     if dist.is_initialized(): dist.destroy_process_group()

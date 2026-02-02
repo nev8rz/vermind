@@ -17,11 +17,10 @@ from vllm.model_executor.layers.layernorm import RMSNorm
 from vllm.model_executor.layers.linear import (MergedColumnParallelLinear,
                                                 QKVParallelLinear,
                                                 RowParallelLinear)
-from vllm.model_executor.layers.logits_processor import LogitsProcessor
 from vllm.model_executor.layers.quantization import QuantizationConfig
 from vllm.model_executor.layers.rotary_embedding import get_rope
 from vllm.model_executor.layers.vocab_parallel_embedding import (
-    DEFAULT_VOCAB_PADDING_SIZE, ParallelLMHead, VocabParallelEmbedding)
+    VocabParallelEmbedding)
 from vllm.model_executor.model_loader.weight_utils import (
     default_weight_loader, maybe_remap_kv_scale_name)
 from vllm.model_executor.models.llama import LlamaForCausalLM
@@ -30,9 +29,8 @@ from vllm.model_executor.models.utils import (AutoWeightsLoader,
                                                extract_layer_index,
                                                is_pp_missing_parameter,
                                                make_empty_intermediate_tensors_factory,
-                                               make_layers, maybe_prefix)
+                                               make_layers)
 from vllm.sequence import IntermediateTensors
-from vllm.model_executor.models.interfaces import SupportsLoRA, SupportsPP
 
 # Import VerMind config
 import sys

@@ -8,23 +8,21 @@ import os
 import sys
 import argparse
 import warnings
-import base64
 import inspect
 from pathlib import Path
 from threading import Thread
-from queue import Queue
 
 import torch
 from PIL import Image
 from transformers import AutoTokenizer, TextIteratorStreamer
 
-# 添加项目根目录到路径
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from vermind_models import VerMindVLM, VLMConfig
+from vermind_models import VerMindVLM
 
 warnings.filterwarnings('ignore')
 
-# 全局变量
+
 model = None
 tokenizer = None
 preprocess = None
@@ -39,14 +37,14 @@ def init_model(model_path, device='cuda'):
     
     print(f"📦 正在加载模型: {model_path}")
     
-    # 加载 tokenizer
+
     tokenizer = AutoTokenizer.from_pretrained(
         model_path,
         trust_remote_code=True,
         local_files_only=True
     )
     
-    # 加载模型
+
     model = VerMindVLM.from_pretrained(
         model_path,
         trust_remote_code=True,
@@ -54,14 +52,14 @@ def init_model(model_path, device='cuda'):
     )
     model = model.to(device).eval()
     
-    # 获取视觉模型和预处理器
+
     vision_model = model.vision_encoder
     preprocess = model.processor
     
-    # 获取配置
+
     lm_config = model.params
     
-    # 统计参数量
+
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"✅ 模型加载完成")
     print(f"📊 可训练参数量: {total_params / 1e6:.2f}M")
@@ -90,31 +88,31 @@ def generate_response(image, prompt, temperature=0.7, top_p=0.85, max_new_tokens
     
     device = args.device
     
-    # 构建消息
+
     messages = [
         {"role": "user", "content": f"<image>\n{prompt}"}
     ]
     
-    # 应用 chat template
+
     text = tokenizer.apply_chat_template(
         messages,
         tokenize=False,
         add_generation_prompt=True
     )
     
-    # 编码输入
+
     inputs = tokenizer(text, return_tensors="pt")
     input_ids_list = inputs.input_ids[0].tolist()
     
-    # 获取 <image> 的 token ids 并替换为 image_ids
+
     image_token_ids = tokenizer("<image>", add_special_tokens=False).input_ids
     image_ids = lm_config.image_ids
     input_ids_list = insert_image_tokens(input_ids_list, image_token_ids, image_ids)
     
-    # 转回 tensor
+
     input_ids = torch.tensor([input_ids_list], dtype=torch.long).to(device)
     
-    # 处理图像
+
     if image is not None:
         image_pil = Image.open(image).convert('RGB')
         pixel_values = VerMindVLM.image2tensor(image_pil, preprocess)
@@ -122,7 +120,7 @@ def generate_response(image, prompt, temperature=0.7, top_p=0.85, max_new_tokens
     else:
         pixel_values = None
     
-    # 创建流式生成器
+
     streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
     
     generation_kwargs = {
@@ -137,11 +135,11 @@ def generate_response(image, prompt, temperature=0.7, top_p=0.85, max_new_tokens
         'streamer': streamer
     }
     
-    # 在新线程中生成
+
     thread = Thread(target=model.generate, kwargs=generation_kwargs)
     thread.start()
     
-    # 流式输出
+
     for new_text in streamer:
         yield new_text
     
@@ -151,7 +149,7 @@ def generate_response(image, prompt, temperature=0.7, top_p=0.85, max_new_tokens
 def create_demo():
     """创建 Gradio 界面"""
     
-    # 读取 SVG logo（优先使用彩色版本）
+
     logo_path = Path(__file__).parent.parent / "docs" / "assets" / "vermind_logo_color.svg"
     if not logo_path.exists():
         logo_path = Path(__file__).parent.parent / "docs" / "assets" / "vermind_logo.svg"
@@ -160,12 +158,12 @@ def create_demo():
         try:
             with open(logo_path, 'r', encoding='utf-8') as f:
                 logo_svg = f.read()
-            # 提取 SVG 内容用于内嵌显示
+
             import re
             svg_match = re.search(r'(<svg.*?</svg>)', logo_svg, re.DOTALL)
             if svg_match:
                 logo_html = svg_match.group(1)
-                # 调整大小
+
                 logo_html = re.sub(r'width="[^"]*"', 'width="60"', logo_html)
                 logo_html = re.sub(r'height="[^"]*"', 'height="60"', logo_html)
         except Exception as e:
@@ -182,7 +180,7 @@ def create_demo():
         .input-container { margin-top: 10px; }
     """) as demo:
         
-        # 标题区域
+
         gr.HTML(f"""
             <div class="header">
                 <div class="logo-container">
@@ -193,27 +191,27 @@ def create_demo():
                         VerMind-V
                     </span>
                 </div>
-                <p style="color: #666; margin-top: 10px;">多模态视觉语言模型对话系统</p>
+                <p style="color:
             </div>
         """)
         
-        # 状态变量
+
         current_image = gr.State(value=None)
         
         with gr.Row():
-            # 左侧：图片上传和参数设置
+
             with gr.Column(scale=3):
                 with gr.Blocks():
-                    # 图片上传
+
                     image_input = gr.Image(
                         type="filepath",
                         label="📷 上传图片",
                         height=400
                     )
                     
-                    # 参数设置
+
                     with gr.Group():
-                        gr.Markdown("### ⚙️ 生成参数")
+                        gr.Markdown("##")
                         temperature_slider = gr.Slider(
                             label="Temperature",
                             minimum=0.1,
@@ -239,26 +237,26 @@ def create_demo():
                             info="最大生成长度"
                         )
                     
-                    # 清空按钮
+
                     clear_btn = gr.Button("🗑️ 清空对话", variant="secondary")
             
-            # 右侧：对话区域
+
             with gr.Column(scale=5):
                 chatbot_kwargs = {
                     "label": "💬 对话",
                     "height": 550,
                     "avatar_images": (None, None),
                 }
-                # gradio 版本兼容：旧版不支持 bubble_full_width
+
                 if "bubble_full_width" in inspect.signature(gr.Chatbot.__init__).parameters:
                     chatbot_kwargs["bubble_full_width"] = False
-                # gradio 新版默认 messages，显式使用 tuples 兼容旧格式
+
                 if "type" in inspect.signature(gr.Chatbot.__init__).parameters:
                     chatbot_kwargs["type"] = "tuples"
                 chatbot = gr.Chatbot(**chatbot_kwargs)
                 chatbot_format = getattr(chatbot, "type", None)
                 if not chatbot_format:
-                    # 新版 gradio 可能移除 type 参数，默认使用 messages 格式
+
                     chatbot_format = "messages"
                 
                 with gr.Row():
@@ -270,7 +268,7 @@ def create_demo():
                     )
                     submit_btn = gr.Button("发送", variant="primary", scale=1)
                 
-                # 示例问题
+
                 gr.Examples(
                     examples=[
                         "描述一下这张图片的内容",
@@ -283,7 +281,7 @@ def create_demo():
                     label="💡 示例问题"
                 )
         
-        # 交互逻辑
+
         def _ensure_history(history):
             return history or []
 
@@ -291,12 +289,12 @@ def create_demo():
             if not image_path:
                 return message
             if use_messages:
-                # Gradio messages 多模态格式
+
                 return [
                     {"path": image_path, "alt_text": "image"},
                     {"type": "text", "text": message},
                 ]
-            # 兼容 tuples：用 Markdown 图片语法
+
             image_md = f"![image](file={image_path})\n\n"
             return f"{image_md}{message}"
 
@@ -317,7 +315,7 @@ def create_demo():
                     history = history + [("请先上传图片", "❌ 请先上传一张图片再进行对话")]
                 return "", history, image_path
             
-            # 显示用户消息（包含图片）
+
             user_content = _format_user_content(image_path, message, chatbot_format == "messages")
             if chatbot_format == "messages":
                 history = history + [{"role": "user", "content": user_content}]
@@ -345,7 +343,7 @@ def create_demo():
                     return history
                 user_message_text = history[-1][0]
 
-            # 提取纯文本（去掉图片 HTML）
+
             import re
             if isinstance(user_message_text, list):
                 parts = []
@@ -362,7 +360,7 @@ def create_demo():
                 user_message_text = ""
             text_only = re.sub(r"!\[[^\]]*\]\(file=[^\)]*\)", "", user_message_text).strip()
             
-            # 生成回复
+
             response = ""
             for new_text in generate_response(image_path, text_only, temperature, top_p, max_tokens):
                 response += new_text
@@ -376,7 +374,7 @@ def create_demo():
             """清空对话"""
             return None, []
         
-        # 绑定事件
+
         msg_input.submit(
             user_message,
             [msg_input, chatbot, image_input],
@@ -406,7 +404,7 @@ def create_demo():
             queue=False
         )
         
-        # 图片更新时更新状态
+
         image_input.change(
             lambda x: x,
             inputs=image_input,
@@ -452,15 +450,15 @@ def main():
     
     args = parser.parse_args()
     
-    # 检查模型路径
+
     if not os.path.exists(args.model_path):
         print(f"❌ 模型路径不存在: {args.model_path}")
         sys.exit(1)
     
-    # 初始化模型
+
     init_model(args.model_path, args.device)
     
-    # 创建并启动界面
+
     demo = create_demo()
     
     print(f"\n🚀 启动 Web Demo...")

@@ -9,7 +9,6 @@
 python scripts/pre_sftdatapacked.py merge --temp_dir ... --output_path ... --keep_shards
 """
 
-import os
 import json
 import gc
 import shutil
@@ -22,7 +21,7 @@ from tqdm import tqdm
 from transformers import AutoTokenizer
 
 # ==========================================
-# 核心功能函数
+
 # ==========================================
 
 def process_jsonl_to_packed_parquet(
@@ -40,7 +39,7 @@ def process_jsonl_to_packed_parquet(
     print(f"[PreSFT] 目标输出: {output_parquet_path}")
     print(f"[PreSFT] Max Seq Len: {max_seq_len}")
     
-    # 1. 加载 Tokenizer
+
     try:
         print("[PreSFT] 加载 Tokenizer...")
         tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, trust_remote_code=True)
@@ -48,7 +47,7 @@ def process_jsonl_to_packed_parquet(
         print(f"[Error] 加载 Tokenizer 失败: {e}")
         return
 
-    # 自动获取特殊 token ID
+
     if pad_token_id is None:
         if tokenizer.pad_token_id is not None:
             pad_token_id = tokenizer.pad_token_id
@@ -57,15 +56,15 @@ def process_jsonl_to_packed_parquet(
         else:
             pad_token_id = 0 # Fallback
             
-    # 2. 准备目录
-    # 默认临时目录在输出文件同级目录下
+
+
     temp_dir = Path(output_parquet_path).parent / "temp_packing"
     if temp_dir.exists():
         shutil.rmtree(temp_dir)
     temp_dir.mkdir(parents=True, exist_ok=True)
     
-    # 3. 流式处理参数
-    batch_size = 20000  # 累积多少样本进行一次 packing
+
+    batch_size = 20000
     stats = {
         "processed": 0,
         "skipped": 0,
@@ -83,7 +82,7 @@ def process_jsonl_to_packed_parquet(
 
     print("[PreSFT] 开始读取与 Packing...")
     
-    # 4. 读取循环
+
     with open(jsonl_path, 'r', encoding='utf-8') as f:
         for line in tqdm(f, total=total_lines, desc="Processing"):
             try:
@@ -91,14 +90,14 @@ def process_jsonl_to_packed_parquet(
                 if not line: continue
                 
                 data = json.loads(line)
-                # 兼容常见字段名
+
                 messages = data.get('conversations', data.get('messages', []))
                 
                 if not messages:
                     stats["skipped"] += 1
                     continue
                 
-                # 应用 Chat Template
+
                 try:
                     text = tokenizer.apply_chat_template(
                         messages,
@@ -114,7 +113,7 @@ def process_jsonl_to_packed_parquet(
                     text,
                     padding=False,
                     truncation=False,
-                    add_special_tokens=False, # template 通常已包含
+                    add_special_tokens=False,
                     return_tensors=None
                 )
                 
@@ -124,14 +123,14 @@ def process_jsonl_to_packed_parquet(
                     stats["skipped"] += 1
                     continue
                 
-                # 截断
+
                 if len(input_ids) > max_seq_len:
                     input_ids = input_ids[:max_seq_len]
                 
-                # 生成 Labels 
+
                 labels = list(input_ids)
                 
-                # 添加到当前 Batch
+
                 current_batch.append({
                     "input_ids": input_ids,
                     "labels": labels,
@@ -139,19 +138,19 @@ def process_jsonl_to_packed_parquet(
                 })
                 stats["processed"] += 1
                 
-                # 触发保存分片
+
                 if len(current_batch) >= batch_size:
                     save_shard(current_batch, temp_dir, stats["shards"], max_seq_len, pad_token_id, ignore_index)
                     stats["shards"] += 1
-                    current_batch = [] # 清空列表
-                    gc.collect()       # 强制 GC
+                    current_batch = []
+                    gc.collect()
 
             except json.JSONDecodeError:
                 stats["errors"] += 1
             except Exception:
                 stats["errors"] += 1
     
-    # 处理最后一批
+
     if current_batch:
         save_shard(current_batch, temp_dir, stats["shards"], max_seq_len, pad_token_id, ignore_index)
         stats["shards"] += 1
@@ -160,7 +159,7 @@ def process_jsonl_to_packed_parquet(
 
     print(f"\n[PreSFT] 预处理统计: {stats}")
     
-    # 5. 调用合并
+
     merge_shards_stream(temp_dir, output_parquet_path, keep_shards=False)
 
 
@@ -171,7 +170,7 @@ def save_shard(batch_samples: List[Dict], temp_dir: Path, shard_idx: int, max_se
     if not batch_samples:
         return
 
-    # 执行 Packing
+
     packed_data = greedy_pack_samples(batch_samples, max_seq_len, pad_token_id, ignore_index)
     
     if not packed_data:
@@ -179,10 +178,10 @@ def save_shard(batch_samples: List[Dict], temp_dir: Path, shard_idx: int, max_se
 
     shard_path = temp_dir / f"shard_{shard_idx:05d}.parquet"
     
-    # 转换为 DataFrame
+
     df = pd.DataFrame(packed_data)
     
-    # 使用 PyArrow 引擎保存
+
     df.to_parquet(shard_path, index=False, engine='pyarrow', compression='snappy')
 
 
@@ -190,16 +189,16 @@ def greedy_pack_samples(samples: List[Dict], max_seq_len: int, pad_token_id: int
     """
     贪婪打包算法 (Best-fit / First-fit desc)
     """
-    # 按长度降序排列
+
     samples.sort(key=lambda x: x['length'], reverse=True)
     
-    bins = [] # 每个 bin 代表一个打包后的序列
+    bins = []
     
     for sample in samples:
         placed = False
         sample_len = sample['length']
         
-        # 尝试放入现有的 bin
+
         for bin_item in bins:
             if bin_item['current_len'] + sample_len <= max_seq_len:
                 bin_item['samples'].append(sample)
@@ -207,7 +206,7 @@ def greedy_pack_samples(samples: List[Dict], max_seq_len: int, pad_token_id: int
                 placed = True
                 break
         
-        # 如果放不下，创建新 bin
+
         if not placed:
             bins.append({
                 'samples': [sample],
@@ -218,9 +217,9 @@ def greedy_pack_samples(samples: List[Dict], max_seq_len: int, pad_token_id: int
     for bin_item in bins:
         input_ids = []
         labels = []
-        boundaries = [0]  # 从 0 开始
+        boundaries = [0]
         
-        # 拼接
+
         for samp in bin_item['samples']:
             input_ids.extend(samp['input_ids'])
             labels.extend(samp['labels'])
@@ -235,7 +234,7 @@ def greedy_pack_samples(samples: List[Dict], max_seq_len: int, pad_token_id: int
             input_ids.extend([pad_token_id] * pad_len)
             labels.extend([ignore_index] * pad_len)
         
-        # actual_length 可以从 boundaries 计算，不需要存储
+
         packed_result.append({
             "input_ids": input_ids,
             "labels": labels,
@@ -257,7 +256,7 @@ def merge_shards_stream(temp_dir: Path, output_path: str, keep_shards: bool = Fa
     print(f"[Merge] 来源目录: {temp_dir}")
     print(f"[Merge] 输出文件: {output_path}")
     
-    # 收集分片
+
     shard_files = sorted(list(temp_dir.glob("shard_*.parquet")))
     if not shard_files:
         print("[Merge] 错误: 未找到分片文件，请检查路径。")
@@ -266,7 +265,7 @@ def merge_shards_stream(temp_dir: Path, output_path: str, keep_shards: bool = Fa
     print(f"[Merge] 找到 {len(shard_files)} 个分片，准备合并...")
 
     try:
-        # 读取第一个分片以确定 Schema
+
         first_table = pq.read_table(shard_files[0])
         schema = first_table.schema
     except Exception as e:
@@ -276,25 +275,25 @@ def merge_shards_stream(temp_dir: Path, output_path: str, keep_shards: bool = Fa
     try:
         with pq.ParquetWriter(output_path, schema, compression='snappy') as writer:
             
-            # 写入第一个分片
+
             writer.write_table(first_table)
             del first_table
             gc.collect()
             
-            # 循环处理其余分片
+
             for shard_path in tqdm(shard_files[1:], desc="Merging Shards"):
                 try:
-                    # 读取
+
                     table = pq.read_table(shard_path)
                     
-                    # Schema 校验与转换
+
                     if table.schema != schema:
                         table = table.cast(schema)
                     
-                    # 写入
+
                     writer.write_table(table)
                     
-                    # 释放
+
                     del table
                     gc.collect()
                     
@@ -305,7 +304,7 @@ def merge_shards_stream(temp_dir: Path, output_path: str, keep_shards: bool = Fa
         file_size_gb = output_path.stat().st_size / (1024**3)
         print(f"[Merge] 最终文件大小: {file_size_gb:.2f} GB")
 
-        # 清理逻辑
+
         if not keep_shards:
             print("[Merge] 正在清理临时分片...")
             shutil.rmtree(temp_dir)
@@ -318,7 +317,7 @@ def merge_shards_stream(temp_dir: Path, output_path: str, keep_shards: bool = Fa
 
 
 # ==========================================
-# 命令行入口
+
 # ==========================================
 
 if __name__ == "__main__":
@@ -353,7 +352,7 @@ if __name__ == "__main__":
         )
         
     elif args.command == 'merge':
-        # 执行流式合并
+
         merge_shards_stream(
             temp_dir=args.temp_dir,
             output_path=args.output_path,

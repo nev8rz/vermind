@@ -6,7 +6,6 @@
 
 import os
 import argparse
-import json
 from pathlib import Path
 from typing import Optional
 
@@ -48,7 +47,7 @@ def upload_file(
     print(f"正在上传: {file_path} -> {repo_id}/{path_in_repo}")
     
     try:
-        # ModelScope API 上传文件
+
         result = api.upload_file(
             path_or_fileobj=str(file_path),
             path_in_repo=path_in_repo,
@@ -101,7 +100,7 @@ def upload_directory(
     print(f"正在上传目录: {local_dir} -> {repo_id}/{path_in_repo or ''}")
     
     try:
-        # 使用 ModelScope 的 upload_folder 方法
+
         result = api.upload_folder(
             repo_id=repo_id,
             folder_path=str(local_dir),
@@ -140,9 +139,9 @@ def create_dataset_repo(
     print(f"正在创建数据集: {repo_id} (私有: {private})")
     
     try:
-        # ModelScope 的 create_model 主要用于创建模型，数据集可能需要通过网页创建
-        # 这里尝试创建，如果失败则提示用户手动创建
-        visibility = 1 if private else 5  # 1=私有, 5=公开
+
+
+        visibility = 1 if private else 5
         
         api.create_model(
             model_id=repo_id,
@@ -168,19 +167,19 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
-  # 上传单个文件
+
   python scripts/upload_dataset.py \\
       --repo_id your_namespace/your_dataset \\
       --file_path /path/to/data.jsonl \\
       --token YOUR_TOKEN
 
-  # 上传整个目录
+
   python scripts/upload_dataset.py \\
       --repo_id your_namespace/your_dataset \\
       --dir_path /path/to/dataset_dir \\
       --token YOUR_TOKEN
 
-  # 创建新数据集并上传
+
   python scripts/upload_dataset.py \\
       --repo_id your_namespace/new_dataset \\
       --file_path /path/to/data.jsonl \\
@@ -243,20 +242,20 @@ def main():
     
     args = parser.parse_args()
     
-    # 验证参数
+
     if not args.file_path and not args.dir_path:
         parser.error("必须指定 --file_path 或 --dir_path")
     
     if args.file_path and args.dir_path:
         parser.error("不能同时指定 --file_path 和 --dir_path")
     
-    # 获取 token
+
     token = args.token or os.getenv('MODEL_SCOPE_TOKEN')
     if not token:
         print("警告: 未提供 token，将尝试使用已保存的凭证")
         print("提示: 可通过 --token 参数或环境变量 MODEL_SCOPE_TOKEN 设置")
     
-    # 初始化 API
+
     try:
         api = HubApi(token=token)
         if token:
@@ -268,11 +267,11 @@ def main():
         print("提示: 请确保已安装 modelscope 并配置了正确的 token")
         return 1
     
-    # 创建数据集（如果需要）
+
     if args.create:
         create_dataset_repo(api, args.repo_id, args.private)
     
-    # 上传文件或目录
+
     try:
         if args.file_path:
             success = upload_file(

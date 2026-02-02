@@ -14,9 +14,6 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../../'))
 
-from typing import Optional, List, Tuple
-import torch
-from torch import nn
 
 from vllm_adapter.core.vermind import VerMindForCausalLM
 from vermind_models.config import VLMConfig

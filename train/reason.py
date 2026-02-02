@@ -30,13 +30,13 @@ def train_epoch(epoch, loader, iters, tokenizer, lm_config, start_step=0, swanla
     """
     训练一个 epoch，对推理标签赋予更高权重
     """
-    # 获取特殊标签的 token ids
+
     start_of_think_ids = tokenizer('<think>', add_special_tokens=False).input_ids
     end_of_think_ids = tokenizer('</think>', add_special_tokens=False).input_ids
     start_of_answer_ids = tokenizer('<answer>', add_special_tokens=False).input_ids
     end_of_answer_ids = tokenizer('</answer>', add_special_tokens=False).input_ids
     
-    # 合并所有特殊 token ids
+
     special_token_ids = start_of_think_ids + end_of_think_ids + start_of_answer_ids + end_of_answer_ids
     special_token_ids_tensor = torch.tensor(special_token_ids, device=args.device)
     
@@ -44,7 +44,7 @@ def train_epoch(epoch, loader, iters, tokenizer, lm_config, start_step=0, swanla
     start_time = time.time()
     
     for step, batch in enumerate(loader, start=start_step + 1):
-        # 处理 batch
+
         if len(batch) == 2:
             input_ids, labels = batch
             attention_mask = None
@@ -59,45 +59,45 @@ def train_epoch(epoch, loader, iters, tokenizer, lm_config, start_step=0, swanla
         if attention_mask is not None:
             attention_mask = attention_mask.to(args.device)
         
-        # 学习率调整
+
         lr = get_lr(epoch * iters + step, args.epochs * iters, args.learning_rate, args.warmup_ratio)
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
 
         with autocast_ctx:
-            # 前向传播
+
             res = model(input_ids, attention_mask=attention_mask)
             
-            # 计算 logits 和 labels
+
             shift_logits = res.logits[..., :-1, :].contiguous()
             shift_labels = labels[..., 1:].contiguous()
             
-            # 计算每个 token 的损失
+
             loss = loss_fct(
                 shift_logits.view(-1, shift_logits.size(-1)),
                 shift_labels.view(-1)
             ).view(shift_labels.size())
             
-            # 创建基础 loss mask（忽略 -100 的位置）
+
             loss_mask = (shift_labels != -100).float()
             
-            # 对特殊标签赋予更高权重
-            # 将 shift_labels 展平，检查哪些位置是特殊 token
+
+
             shift_labels_flat = shift_labels.view(-1)
             is_special = torch.isin(shift_labels_flat, special_token_ids_tensor)
             
-            # 应用权重：特殊标签使用 tag_weight，其他使用 1.0
+
             loss_mask_flat = loss_mask.view(-1)
             loss_mask_sum = loss_mask_flat.sum()
             
-            # 特殊标签权重增强
+
             loss_mask_flat[is_special] = loss_mask_flat[is_special] * args.tag_weight
             loss_mask = loss_mask_flat.view(shift_labels.size())
             
-            # 计算加权损失
+
             logits_loss = (loss * loss_mask).sum() / (loss_mask_sum + 1e-8)
             
-            # 加上辅助损失（MoE）
+
             aux_loss = res.aux_loss if hasattr(res, 'aux_loss') and res.aux_loss is not None else 0.0
             total_loss = logits_loss + aux_loss
             total_loss = total_loss / args.accumulation_steps
@@ -111,7 +111,7 @@ def train_epoch(epoch, loader, iters, tokenizer, lm_config, start_step=0, swanla
             scaler.update()
             optimizer.zero_grad(set_to_none=True)
 
-        # 日志记录
+
         if step % args.log_interval == 0 or step == iters - 1:
             spend_time = time.time() - start_time
             current_loss = total_loss.item() * args.accumulation_steps
@@ -134,7 +134,7 @@ def train_epoch(epoch, loader, iters, tokenizer, lm_config, start_step=0, swanla
                     "epoch_time": eta_min
                 })
 
-        # 保存 checkpoint
+
         if (step % args.save_interval == 0 or step == iters - 1) and is_main_process():
             model.eval()
             save_checkpoint(
@@ -188,13 +188,13 @@ if __name__ == "__main__":
     parser.add_argument("--use_compile", default=0, type=int, choices=[0, 1], help="是否使用torch.compile加速")
     args = parser.parse_args()
 
-    # ========== 1. 初始化环境和随机种子 ==========
+
     local_rank = init_distributed_mode()
     if dist.is_initialized():
         args.device = f"cuda:{local_rank}"
     setup_seed(42 + (dist.get_rank() if dist.is_initialized() else 0))
     
-    # ========== 2. 配置目录、模型参数 ==========
+
     os.makedirs(args.save_dir, exist_ok=True)
     lm_config = VerMindConfig(
         hidden_size=args.hidden_size,
@@ -204,7 +204,7 @@ if __name__ == "__main__":
         use_moe=bool(args.use_moe)
     )
     
-    # 检查 resume checkpoint
+
     training_state = None
     resume_path = None
     if args.from_resume == 1:
@@ -218,12 +218,12 @@ if __name__ == "__main__":
                 Logger(f'Failed to resume: {e}')
                 training_state = None
     
-    # ========== 3. 设置混合精度 ==========
+
     device_type = "cuda" if "cuda" in args.device else "cpu"
     dtype = torch.bfloat16 if args.dtype == "bfloat16" else torch.float16
     autocast_ctx = nullcontext() if device_type == "cpu" else torch.amp.autocast('cuda', dtype=dtype)
     
-    # ========== 4. 配置 swanlab ==========
+
     swanlab_run = None
     if args.use_swanlab and is_main_process():
         swanlab_id = training_state.get('swanlab_id') if training_state else None
@@ -232,7 +232,7 @@ if __name__ == "__main__":
         swanlab.init(project=args.swanlab_project, name=swanlab_run_name, id=swanlab_id, resume=resume)
         swanlab_run = swanlab.get_run()
     
-    # ========== 5. 定义模型、数据、优化器 ==========
+
     if training_state is not None:
         model, tokenizer, _ = load_checkpoint(resume_path, device=args.device, load_training_state=False)
         Logger('Model loaded from resume checkpoint')
@@ -274,7 +274,7 @@ if __name__ == "__main__":
         model = torch.compile(model)
         Logger('torch.compile enabled')
     
-    # 打印特殊标签 token 信息
+
     think_start_ids = tokenizer('<think>', add_special_tokens=False).input_ids
     think_end_ids = tokenizer('</think>', add_special_tokens=False).input_ids
     answer_start_ids = tokenizer('<answer>', add_special_tokens=False).input_ids
@@ -288,7 +288,7 @@ if __name__ == "__main__":
     scaler = torch.amp.GradScaler('cuda', enabled=(args.dtype == 'float16'))
     optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate)
     
-    # ========== 6. 从 ckp 恢复状态 ==========
+
     start_epoch, start_step = 0, 0
     if training_state:
         optimizer.load_state_dict(training_state['optimizer'])
@@ -296,19 +296,19 @@ if __name__ == "__main__":
         start_epoch = training_state['epoch']
         start_step = training_state.get('step', 0)
     
-    # ========== 7. DDP 包装模型 ==========
+
     if dist.is_initialized():
         model._ddp_params_and_buffers_to_ignore = {"freqs_cos", "freqs_sin"}
         model = DistributedDataParallel(model, device_ids=[local_rank])
     
-    # ========== 8. 确定基础保存路径 ==========
+
     moe_suffix = '_moe' if lm_config.use_moe else ''
     original_save_path = f'{args.save_dir}/{args.save_weight}_{lm_config.hidden_size}{moe_suffix}'
     base_save_path = get_base_save_path(original_save_path)
     if is_main_process():
         Logger(f'Base save path: {os.path.basename(base_save_path)}')
     
-    # ========== 9. 开始训练 ==========
+
     Logger(f'Starting Reasoning Model training: epochs={args.epochs}, tag_weight={args.tag_weight}x')
     for epoch in range(start_epoch, args.epochs):
         train_sampler and train_sampler.set_epoch(epoch)
@@ -324,7 +324,7 @@ if __name__ == "__main__":
         else:
             train_epoch(epoch, loader, len(loader), tokenizer, lm_config, 0, swanlab_run, base_save_path)
     
-    # ========== 10. 清理分布式进程 ==========
+
     if dist.is_initialized():
         dist.destroy_process_group()
     

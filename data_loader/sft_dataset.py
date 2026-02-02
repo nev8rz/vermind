@@ -5,7 +5,6 @@ import torch
 from pathlib import Path
 from torch.utils.data import Dataset
 from datasets import load_dataset
-import pandas as pd
 import pyarrow.parquet as pq
 os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 

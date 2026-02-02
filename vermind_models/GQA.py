@@ -46,7 +46,7 @@ class Attention(nn.Module):
                       HAS_FLASH_ATTN_VARLEN and 
                       self.flash and 
                       past_key_value is None and
-                      x.dim() == 2)  # varlen 模式下 x 应该是 (total_tokens, hidden_size)，不是 (batch, seq, hidden)
+                      x.dim() == 2)
         
         if use_varlen:
             total_tokens, hidden_size = x.shape

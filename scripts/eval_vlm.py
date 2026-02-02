@@ -11,7 +11,6 @@ import argparse
 import warnings
 import base64
 from pathlib import Path
-from io import BytesIO
 from threading import Thread
 
 import torch
@@ -84,36 +83,36 @@ def insert_image_tokens(input_ids, image_token_ids, image_ids):
 
 def generate_response_local(model, tokenizer, image, prompt, max_length=512, temperature=0.7, device='cuda', stream=False):
     """本地生成回复，支持流式输出"""
-    # 构建消息
+
     messages = [
         {"role": "user", "content": f"<image>\n{prompt}"}
     ]
     
-    # 应用 chat template
+
     text = tokenizer.apply_chat_template(
         messages,
         tokenize=False,
         add_generation_prompt=True
     )
     
-    # 编码输入
+
     inputs = tokenizer(text, return_tensors="pt")
     input_ids_list = inputs.input_ids[0].tolist()
     
-    # 获取 <image> 的 token ids 并替换为 image_ids
+
     image_token_ids = tokenizer("<image>", add_special_tokens=False).input_ids
     image_ids = model.params.image_ids
     input_ids_list = insert_image_tokens(input_ids_list, image_token_ids, image_ids)
     
-    # 转回 tensor
+
     input_ids = torch.tensor([input_ids_list], dtype=torch.long).to(device)
     
-    # 处理图像
+
     pixel_values = model.image2tensor(image, model.processor)
     pixel_values = pixel_values.unsqueeze(0).to(device)
     
     if stream:
-        # 流式生成
+
         from transformers import TextIteratorStreamer
         streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
         
@@ -129,11 +128,11 @@ def generate_response_local(model, tokenizer, image, prompt, max_length=512, tem
             'streamer': streamer
         }
         
-        # 在新线程中生成
+
         thread = Thread(target=model.generate, kwargs=generation_kwargs)
         thread.start()
         
-        # 流式输出
+
         generated_text = ""
         for new_text in streamer:
             generated_text += new_text
@@ -141,7 +140,7 @@ def generate_response_local(model, tokenizer, image, prompt, max_length=512, tem
         
         thread.join()
     else:
-        # 非流式生成
+
         with torch.no_grad():
             output = model.generate(
                 input_ids=input_ids,
@@ -154,10 +153,10 @@ def generate_response_local(model, tokenizer, image, prompt, max_length=512, tem
                 eos_token_id=tokenizer.eos_token_id
             )
         
-        # 解码输出
+
         generated_text = tokenizer.decode(output[0], skip_special_tokens=True)
         
-        # 提取助手回复
+
         if "assistant" in generated_text.lower():
             parts = generated_text.split("assistant")
             if len(parts) > 1:
@@ -199,7 +198,7 @@ def generate_response_api(client, model, image_path, prompt, max_tokens=512, tem
     )
     
     if stream:
-        # 流式输出
+
         for chunk in response:
             if chunk.choices and chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
@@ -210,14 +209,14 @@ def generate_response_api(client, model, image_path, prompt, max_tokens=512, tem
 def main():
     parser = argparse.ArgumentParser(description="VerMind-V VLM 推理与对话")
     
-    # 模式选择
+
     parser.add_argument(
         '--use_api',
         action='store_true',
         help="使用 vLLM API 模式（默认使用本地推理）"
     )
     
-    # 本地推理参数
+
     parser.add_argument(
         '--model_path',
         type=str,
@@ -231,7 +230,7 @@ def main():
         help="推理设备（本地模式）"
     )
     
-    # API 参数
+
     parser.add_argument(
         '--api_base',
         default='http://localhost:8000/v1',
@@ -251,7 +250,7 @@ def main():
         help="API 模型名称"
     )
     
-    # 通用参数
+
     parser.add_argument(
         '--image_dir',
         type=str,
@@ -291,7 +290,7 @@ def main():
     
     args = parser.parse_args()
     
-    # 准备图片列表
+
     if args.image:
         images = [Path(args.image)]
     else:
@@ -307,9 +306,9 @@ def main():
         print(f"[{i}] {img_path.name}")
     print("=" * 60 + "\n")
     
-    # 根据模式初始化
+
     if args.use_api:
-        # API 模式
+
         from openai import OpenAI
         client = OpenAI(api_key=args.api_key, base_url=args.api_base)
         print(f"🔗 API 模式: {args.api_base}")
@@ -322,7 +321,7 @@ def main():
             ):
                 yield chunk
     else:
-        # 本地模式
+
         if not args.model_path:
             print("❌ 本地推理模式需要指定 --model_path")
             return
@@ -339,7 +338,7 @@ def main():
             ):
                 yield chunk
     
-    # 交互模式
+
     while True:
         try:
             choice = input(f"选择图片 [0-{len(images)-1}] 或 'q' 退出: ").strip()
@@ -358,7 +357,7 @@ def main():
             image_path = images[img_idx]
             print(f"\n📷 图片: {image_path.name}")
             
-            # 对话循环
+
             print("\n💡 提示: 输入问题开始对话，输入 'next' 切换图片，输入 'exit' 退出\n")
             
             while True:
@@ -371,7 +370,7 @@ def main():
                 if not prompt:
                     continue
                 
-                # 自动测试
+
                 if prompt == 'test':
                     test_prompts = [
                         '描述这张图片',
@@ -400,7 +399,7 @@ def main():
                         print("-" * 40 + "\n")
                     continue
                 
-                # 生成回复
+
                 print('🤖: ', end='', flush=True)
                 st = time.time()
                 full_response = ""

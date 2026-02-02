@@ -1,6 +1,4 @@
-"""
-训练工具函数集合
-"""
+
 import os
 import random
 import math
@@ -12,45 +10,43 @@ from torch.utils.data import Sampler
 
 def get_model_params(model, config):
     total = sum(p.numel() for p in model.parameters()) / 1e6
-    n_routed = getattr(config, 'n_routed_experts', getattr(config, 'num_experts', 0)) # 路由专家数量
-    n_active = getattr(config, 'num_experts_per_tok', 0) # 每个token选择的专家数量
-    n_shared = getattr(config, 'n_shared_experts', 0) # 共享专家数量
-    expert = sum(p.numel() for n, p in model.named_parameters() if 'mlp.experts.0.' in n) / 1e6 # 路由专家参数数量
-    shared_expert = sum(p.numel() for n, p in model.named_parameters() if 'mlp.shared_experts.0.' in n) / 1e6 # 共享专家参数数量
-    base = total - (expert * n_routed) - (shared_expert * n_shared) # 基础参数数量
-    active = base + (expert * n_active) + (shared_expert * n_shared) # 活跃参数数量
-    if active < total: Logger(f'Model Params: {total:.2f}M-A{active:.2f}M') # 打印模型参数
-    else: Logger(f'Model Params: {total:.2f}M') # 打印模型参数
+    n_routed = getattr(config, 'n_routed_experts', getattr(config, 'num_experts', 0))
+    n_active = getattr(config, 'num_experts_per_tok', 0)
+    n_shared = getattr(config, 'n_shared_experts', 0)
+    expert = sum(p.numel() for n, p in model.named_parameters() if 'mlp.experts.0.' in n) / 1e6
+    shared_expert = sum(p.numel() for n, p in model.named_parameters() if 'mlp.shared_experts.0.' in n) / 1e6
+    base = total - (expert * n_routed) - (shared_expert * n_shared)
+    active = base + (expert * n_active) + (shared_expert * n_shared)
+    if active < total: Logger(f'Model Params: {total:.2f}M-A{active:.2f}M')
+    else: Logger(f'Model Params: {total:.2f}M')
 
 
-def is_main_process(): # 判断是否是主进程
+def is_main_process():
     return not dist.is_initialized() or dist.get_rank() == 0
 
 
-def Logger(content): # 打印日志
+def Logger(content):
     if is_main_process():
         print(content)
 
 
 def get_lr(step, total_steps, lr, warmup_ratio=0.0):
-    warmup_steps = int(total_steps * warmup_ratio) # 预热步数
+    warmup_steps = int(total_steps * warmup_ratio)
     if warmup_steps > 0 and step < warmup_steps:
         return lr * step / warmup_steps
-    # 余弦退火：从 lr 衰减到 0.05 * lr
-    # 公式：0.05 + 0.475 * (1 + cos)，确保最大为 1.0，最小为 0.05
     return lr * (0.05 + 0.475 * (1 + math.cos(math.pi * (step - warmup_steps) / (total_steps - warmup_steps))))
 
 def init_distributed_mode():
     if int(os.environ.get("RANK", -1)) == -1:
-        return 0  # 非DDP模式，world_size为1
+        return 0
 
-    dist.init_process_group(backend="nccl") # 初始化分布式训练环境
-    local_rank = int(os.environ["LOCAL_RANK"]) # 获取本地rank
-    torch.cuda.set_device(local_rank) # 设置本地设备
+    dist.init_process_group(backend="nccl")
+    local_rank = int(os.environ["LOCAL_RANK"])
+    torch.cuda.set_device(local_rank)
     return local_rank
 
 
-def setup_seed(seed: int): # 设置随机种子，保证训练结果可复现
+def setup_seed(seed: int):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -59,7 +55,6 @@ def setup_seed(seed: int): # 设置随机种子，保证训练结果可复现
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-# ========== 模型保存和加载函数（直接保存方式，使用 torch.save）==========
 
 def get_base_save_path(original_save_path):
     """
@@ -77,16 +72,16 @@ def get_base_save_path(original_save_path):
     base_dir = os.path.dirname(original_save_path)
     base_name = os.path.basename(original_save_path)
     
-    # 检查原始基础路径是否存在且有 checkpoint
+
     base_path = original_save_path
     if os.path.exists(original_save_path):
-        # 检查是否有 checkpoint 目录
+
         pattern = os.path.join(original_save_path, "checkpoint_*")
         has_checkpoints = len([p for p in glob.glob(pattern) if os.path.isdir(p)]) > 0
         
         if has_checkpoints:
-            # 如果原始路径已有 checkpoint，需要创建新的编号基础路径
-            # 查找所有 pretrain_768_* 目录
+
+
             base_pattern = os.path.join(base_dir, f"{base_name}_*")
             numbered_bases = []
             for path in glob.glob(base_pattern):
@@ -99,7 +94,7 @@ def get_base_save_path(original_save_path):
                         except ValueError:
                             pass
             
-            # 确定下一个基础路径编号
+
             if numbered_bases:
                 next_base_num = max(numbered_bases) + 1
             else:
@@ -107,7 +102,7 @@ def get_base_save_path(original_save_path):
             
             base_path = os.path.join(base_dir, f"{base_name}_{next_base_num}")
     
-    # 创建基础目录
+
     os.makedirs(base_path, exist_ok=True)
     
     return base_path
@@ -137,63 +132,63 @@ def save_checkpoint(model, tokenizer, config, save_path, optimizer=None, scaler=
     import glob
     import shutil
     
-    # save_path 应该已经在训练开始时确定，直接使用
+
     base_path = save_path
     
-    # 计算全局步数：global_step = epoch * steps_per_epoch + current_step
-    # 如果 steps_per_epoch 未提供，则回退到仅使用 step（向后兼容）
+
+
     if steps_per_epoch is not None:
         global_step = epoch * steps_per_epoch + step
     else:
         global_step = step
     
-    # checkpoint 编号逻辑：
-    # 1. 如果 global_step < save_interval：使用 global_step（避免都存成 checkpoint_0）
-    # 2. 如果是间隔边界（global_step % save_interval == 0）：使用间隔倍数
-    # 3. 否则（如最后一个step）：使用 global_step，避免覆盖间隔边界的checkpoint
+
+
+
+
     is_last_step = kwargs.get('is_last_step', False)
     if global_step < save_interval:
         checkpoint_num = global_step
     elif global_step % save_interval == 0:
-        # 间隔边界：使用间隔倍数
+
         checkpoint_num = (global_step // save_interval) * save_interval
     else:
-        # 非间隔边界（如最后一个step）：使用 global_step，避免覆盖
+
         checkpoint_num = global_step
     
-    # 实际保存路径：base_path/checkpoint_N/
+
     actual_save_path = os.path.join(base_path, f"checkpoint_{checkpoint_num}")
     
     os.makedirs(actual_save_path, exist_ok=True)
     
-    # 获取原始模型
+
     raw_model = model.module if isinstance(model, DistributedDataParallel) else model
     raw_model = getattr(raw_model, '_orig_mod', raw_model)
     
-    # 处理共享权重：临时解除共享，保存后再恢复
-    # lm_head.weight 和 model.embed_tokens.weight 共享同一个权重矩阵
-    # safetensors 格式不支持共享权重，需要临时解除共享
+
+
+
     embed_weight = raw_model.model.embed_tokens.weight
     lm_head_weight = raw_model.lm_head.weight
     is_tied = embed_weight.data_ptr() == lm_head_weight.data_ptr()
     
     if is_tied:
-        # 临时解除共享：为 embed_tokens 创建独立的权重
+
         raw_model.model.embed_tokens.weight = nn.Parameter(embed_weight.clone())
     
     try:
-        # 使用 transformers 标准格式保存（safetensors）
+
         raw_model.save_pretrained(actual_save_path, safe_serialization=True)
         
-        # 保存 tokenizer（如果提供）
+
         if tokenizer is not None:
             tokenizer.save_pretrained(actual_save_path)
     finally:
-        # 恢复共享权重
+
         if is_tied:
             raw_model.model.embed_tokens.weight = lm_head_weight
     
-    # 保存训练状态（optimizer, scaler 等）
+
     training_state = {
         'epoch': epoch,
         'step': step,
@@ -216,7 +211,7 @@ def save_checkpoint(model, tokenizer, config, save_path, optimizer=None, scaler=
             swanlab_id = getattr(swanlab, 'id', None)
     training_state['swanlab_id'] = swanlab_id
     
-    # 保存其他状态
+
     for key, value in kwargs.items():
         if value is not None:
             if hasattr(value, 'state_dict'):
@@ -226,23 +221,23 @@ def save_checkpoint(model, tokenizer, config, save_path, optimizer=None, scaler=
             else:
                 training_state[key] = value
     
-    # 保存训练状态
+
     training_state_path = os.path.join(actual_save_path, 'training_state.pt')
     training_state_tmp = training_state_path + '.tmp'
     torch.save(training_state, training_state_tmp)
     os.replace(training_state_tmp, training_state_path)
     
-    # 清理旧的 checkpoint（保留最新的 max_checkpoints 个）
+
     all_checkpoints = []
     pattern = os.path.join(base_path, "checkpoint_*")
     for path in glob.glob(pattern):
         if os.path.isdir(path):
             all_checkpoints.append(path)
     
-    # 按修改时间排序，最新的在前
+
     all_checkpoints.sort(key=lambda x: os.path.getmtime(x), reverse=True)
     
-    # 删除超出数量的旧 checkpoint
+
     removed_count = 0
     if len(all_checkpoints) > max_checkpoints:
         for old_cp in all_checkpoints[max_checkpoints:]:
@@ -269,15 +264,15 @@ def load_checkpoint(model_path, device='cuda', load_training_state=True):
     from vermind_models.models.modeling_vermind import VerMindForCausalLM
     from transformers import AutoTokenizer
     
-    # 确保路径是绝对路径
+
     model_path = os.path.abspath(model_path) if not os.path.isabs(model_path) else model_path
     
-    # 使用 transformers 标准格式加载（本地路径）
-    # 对于本地绝对路径，需要确保 transformers 能正确识别
-    # 如果路径存在且是目录，使用 local_files_only=True 明确指定这是本地路径
+
+
+
     if os.path.exists(model_path) and os.path.isdir(model_path):
-        # 本地目录路径，明确指定 local_files_only 和 trust_remote_code
-        # 这样可以避免 transformers 将路径误认为是 Hub repo_id
+
+
         try:
             model = VerMindForCausalLM.from_pretrained(
                 model_path, 
@@ -285,8 +280,8 @@ def load_checkpoint(model_path, device='cuda', load_training_state=True):
                 trust_remote_code=True
             )
         except Exception as e:
-            # 如果 local_files_only 失败，尝试不使用该参数
-            # 某些旧版本的 transformers 可能不支持 local_files_only
+
+
             Logger(f'Warning: Failed to load with local_files_only=True: {e}')
             Logger(f'Trying without local_files_only...')
             model = VerMindForCausalLM.from_pretrained(
@@ -294,28 +289,28 @@ def load_checkpoint(model_path, device='cuda', load_training_state=True):
                 trust_remote_code=True
             )
     else:
-        # 路径不存在，可能要从 Hub 下载（但这里不应该发生）
+
         model = VerMindForCausalLM.from_pretrained(model_path, trust_remote_code=True)
     
-    # 恢复共享权重（lm_head.weight 和 model.embed_tokens.weight）
-    # 从 safetensors 加载后，需要重新绑定共享权重
+
+
     if hasattr(model, 'lm_head') and hasattr(model.model, 'embed_tokens'):
         if model.lm_head.weight.shape == model.model.embed_tokens.weight.shape:
             model.model.embed_tokens.weight = model.lm_head.weight
     
     model = model.to(device)
     
-    # 加载 tokenizer（从 checkpoint 目录或默认路径）
+
     tokenizer = None
     if os.path.exists(model_path):
-        # 尝试从 checkpoint 目录加载 tokenizer
+
         try:
             tokenizer = AutoTokenizer.from_pretrained(model_path)
         except Exception:
             pass
     
     if tokenizer is None:
-        # 如果 tokenizer 不存在，使用默认路径
+
         tokenizer = AutoTokenizer.from_pretrained('/root/vermind/vermind_tokenizer')
     
     training_state = None
@@ -327,7 +322,7 @@ def load_checkpoint(model_path, device='cuda', load_training_state=True):
         else:
             Logger(f'No training state found at {training_state_path}')
     
-    # 始终返回3个值，即使 training_state 为 None
+
     return model, tokenizer, training_state
 
 
@@ -353,7 +348,7 @@ def resume_training(model_path, device='cuda'):
     return model, tokenizer, training_state
 
 
-class SkipBatchSampler(Sampler): # 跳过批次采样器，跳过前skip_batches个批次，resume时使用
+class SkipBatchSampler(Sampler):
     def __init__(self, sampler, batch_size, skip_batches=0):
         self.sampler = sampler
         self.batch_size = batch_size

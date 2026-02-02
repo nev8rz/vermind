@@ -13,7 +13,7 @@ from vermind_models.config import VerMindConfig
 from data_loader import SFTDataset
 from utils import (
     get_lr, init_distributed_mode, setup_seed, Logger, is_main_process, SkipBatchSampler,
-    load_checkpoint, resume_training, get_base_save_path
+    load_checkpoint, get_base_save_path
 )
 from transformers import AutoTokenizer
 from vermind_models.models.modeling_vermind import VerMindForCausalLM
@@ -23,28 +23,28 @@ warnings.filterwarnings('ignore')
 
 
 def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None, lm_config=None, base_save_path=None, target_modules=None, lora_rank=None, lora_alpha=None, lora_params=None):
-    start_time = time.time() # 开始时间
+    start_time = time.time()
     for step, (input_ids, labels) in enumerate(loader, start=start_step + 1):
-        input_ids = input_ids.to(args.device) # 将input_ids移动到设备
-        labels = labels.to(args.device) # 将labels移动到设备
-        lr = get_lr(epoch * iters + step, args.epochs * iters, args.learning_rate, args.warmup_ratio) # 获取学习率
-        for param_group in optimizer.param_groups: # 遍历优化器参数组
-            param_group['lr'] = lr # 设置学习率
+        input_ids = input_ids.to(args.device)
+        labels = labels.to(args.device)
+        lr = get_lr(epoch * iters + step, args.epochs * iters, args.learning_rate, args.warmup_ratio)
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = lr
 
-        with autocast_ctx: # 混合精度训练
+        with autocast_ctx:
             res = model(input_ids, labels=labels)
             loss = res.loss
-            loss = loss / args.accumulation_steps # 损失除以梯度累积步数
+            loss = loss / args.accumulation_steps
 
-        scaler.scale(loss).backward() # 梯度累积
+        scaler.scale(loss).backward()
 
         if (step + 1) % args.accumulation_steps == 0:
             scaler.unscale_(optimizer)
-            # 只裁剪 LoRA 参数的梯度（如果 lora_params 可用）
+
             if lora_params:
                 torch.nn.utils.clip_grad_norm_(lora_params, args.grad_clip)
             else:
-                # 如果没有传入 lora_params，回退到所有参数（但应该不会发生）
+
                 torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
 
             scaler.step(optimizer)
@@ -52,8 +52,8 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
 
             optimizer.zero_grad(set_to_none=True)
             
-            # 调试：检查 LoRA 参数是否有梯度
-            if lora_params and step % (args.log_interval * 10) == 0:  # 每10个log_interval打印一次
+
+            if lora_params and step % (args.log_interval * 10) == 0:
                 lora_grad_norm = 0.0
                 lora_param_norm = 0.0
                 grad_count = 0
@@ -75,7 +75,7 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
             if swanlab: swanlab.log({"loss": current_loss, "learning_rate": current_lr, "epoch_time": eta_min})
 
         if (step % args.save_interval == 0 or step == iters - 1) and is_main_process():
-            # 保存LoRA权重（与 utils.save_checkpoint 一致的编号逻辑）
+
             global_step = epoch * iters + step
             if global_step >= args.save_interval:
                 checkpoint_num = (global_step // args.save_interval) * args.save_interval
@@ -92,7 +92,7 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
             )
             Logger(f'LoRA weights saved to {os.path.basename(base_save_path)}/checkpoint_{checkpoint_num}/adapter_model.safetensors')
             
-            # 清理旧的 checkpoint（保留最新的 max_checkpoints 个）
+
             import glob
             import shutil
             all_checkpoints = []
@@ -101,10 +101,10 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, tokenizer=None
                 if os.path.isdir(path):
                     all_checkpoints.append(path)
             
-            # 按修改时间排序，最新的在前
+
             all_checkpoints.sort(key=lambda x: os.path.getmtime(x), reverse=True)
             
-            # 删除超出数量的旧 checkpoint
+
             removed_count = 0
             if len(all_checkpoints) > args.max_checkpoints:
                 for old_cp in all_checkpoints[args.max_checkpoints:]:
@@ -150,59 +150,59 @@ if __name__ == "__main__":
     parser.add_argument("--use_compile", default=0, type=int, choices=[0, 1], help="是否使用torch.compile加速（0=否，1=是）")
     args = parser.parse_args()
     
-    # 设置 lora_alpha 默认值
+
     if args.lora_alpha is None:
         args.lora_alpha = args.lora_rank * 2
 
-    # ========== 1. 初始化环境和随机种子 ==========
+
     local_rank = init_distributed_mode()
     if dist.is_initialized(): args.device = f"cuda:{local_rank}"
     setup_seed(42 + (dist.get_rank() if dist.is_initialized() else 0))
     
-    # ========== 2. 配置目录、模型参数 ==========
-    os.makedirs(args.save_dir, exist_ok=True) # 创建保存目录
+
+    os.makedirs(args.save_dir, exist_ok=True)
     lm_config = VerMindConfig(
         hidden_size=args.hidden_size, 
         num_hidden_layers=args.num_hidden_layers, 
         num_attention_heads=args.num_attention_heads,
         num_key_value_heads=args.num_key_value_heads,
         use_moe=False
-    ) # 配置模型参数
+    )
     
-    # ========== 3. 设置混合精度 ==========
+
     device_type = "cuda" if "cuda" in args.device else "cpu"
     dtype = torch.bfloat16 if args.dtype == "bfloat16" else torch.float16
     autocast_ctx = nullcontext() if device_type == "cpu" else torch.amp.autocast('cuda', dtype=dtype)
     
-    # ========== 4. 配置swanlab ==========
+
     swanlab_run = None
     if args.use_swanlab and is_main_process():
         swanlab_run_name = f"VerMind-LoRA-Rank{args.lora_rank}-Alpha{args.lora_alpha}-Epoch{args.epochs}-BatchSize{args.batch_size}-LR{args.learning_rate}"
         swanlab.init(project=args.swanlab_project, name=swanlab_run_name)
         swanlab_run = swanlab.get_run()
     
-    # ========== 5. 加载模型和tokenizer ==========
-    # 从基础模型加载
+
+
     if args.from_weight != 'none':
         if os.path.isdir(args.from_weight):
-            # 如果是目录，检查是否是基础路径（包含 checkpoint_* 子目录）还是具体的 checkpoint 路径
+
             import glob
             checkpoint_pattern = os.path.join(args.from_weight, "checkpoint_*")
             checkpoints = [p for p in glob.glob(checkpoint_pattern) if os.path.isdir(p)]
             
             if checkpoints:
-                # 如果是基础路径（包含多个 checkpoint），自动选择最新的
+
                 checkpoints.sort(key=lambda x: int(os.path.basename(x).replace("checkpoint_", "")))
                 latest_checkpoint = checkpoints[-1]
                 Logger(f'Found {len(checkpoints)} checkpoints, using latest: {os.path.basename(latest_checkpoint)}')
                 model, tokenizer, _ = load_checkpoint(latest_checkpoint, device=args.device, load_training_state=False)
                 Logger(f'Model and tokenizer loaded from {latest_checkpoint}')
             else:
-                # 如果是具体的 checkpoint 目录，直接加载
+
                 model, tokenizer, _ = load_checkpoint(args.from_weight, device=args.device, load_training_state=False)
                 Logger(f'Model and tokenizer loaded from {args.from_weight}')
         else:
-            # 兼容旧格式：从 .pth 文件加载
+
             model = VerMindForCausalLM(lm_config)
             tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path)
             weight_path = f'{args.save_dir}/{args.from_weight}_{lm_config.hidden_size}.pth'
@@ -217,12 +217,12 @@ if __name__ == "__main__":
     else:
         raise ValueError("LoRA training requires a base model. Please specify --from_weight")
     
-    # 应用LoRA
+
     target_modules = [m.strip() for m in args.lora_target_modules.split(',')] if args.lora_target_modules else None
     apply_lora(model, rank=args.lora_rank, alpha=args.lora_alpha, target_modules=target_modules)
     Logger(f'LoRA applied with rank={args.lora_rank}, alpha={args.lora_alpha}, target_modules={target_modules}')
     
-    # 加载已有的LoRA权重（如果指定）
+
     if args.lora_load_from != 'none':
         if os.path.exists(args.lora_load_from):
             load_lora(model, args.lora_load_from)
@@ -230,7 +230,7 @@ if __name__ == "__main__":
         else:
             Logger(f'Warning: LoRA weight file not found: {args.lora_load_from}')
     
-    # 冻结基础模型参数，只训练 LoRA 参数
+
     Logger('Freezing base model parameters...')
     frozen_count = 0
     trainable_count = 0
@@ -243,7 +243,7 @@ if __name__ == "__main__":
             frozen_count += 1
     Logger(f'Frozen {frozen_count} base model parameters, {trainable_count} LoRA parameters are trainable')
     
-    # 只优化LoRA参数
+
     lora_params = [p for n, p in model.named_parameters() if 'lora' in n.lower() and p.requires_grad]
     total_lora_params = sum(p.numel() for p in lora_params)
     total_model_params = sum(p.numel() for p in model.parameters())
@@ -256,25 +256,25 @@ if __name__ == "__main__":
     train_ds = SFTDataset(args.data_path, tokenizer, max_length=args.max_seq_len)
     train_sampler = DistributedSampler(train_ds) if dist.is_initialized() else None
     scaler = torch.amp.GradScaler('cuda', enabled=(args.dtype == 'float16'))
-    optimizer = optim.AdamW(lora_params, lr=args.learning_rate)  # 只优化LoRA参数
+    optimizer = optim.AdamW(lora_params, lr=args.learning_rate)
     
-    # ========== 6. DDP包模型 ==========
+
     if dist.is_initialized():
         model._ddp_params_and_buffers_to_ignore = {"freqs_cos", "freqs_sin"}
         model = DistributedDataParallel(model, device_ids=[local_rank])
-        # DDP 包装后，需要重新收集 lora_params，确保参数引用正确
-        # 注意：DDP 包装不会改变参数引用，但为了保险起见，我们重新收集
+
+
         lora_params = [p for n, p in model.named_parameters() if 'lora' in n.lower() and p.requires_grad]
-        # 更新优化器的参数组
+
         optimizer = optim.AdamW(lora_params, lr=args.learning_rate)
     
-    # ========== 7. 确定基础保存路径 ==========
+
     original_save_path = f'{args.save_dir}/{args.save_weight}_{lm_config.hidden_size}'
     base_save_path = get_base_save_path(original_save_path)
     if is_main_process():
         Logger(f'Base save path determined: {os.path.basename(base_save_path)}')
     
-    # ========== 8. 开始训练 ==========
+
     for epoch in range(args.epochs):
         train_sampler and train_sampler.set_epoch(epoch)
         setup_seed(42 + epoch)
@@ -283,5 +283,5 @@ if __name__ == "__main__":
         loader = DataLoader(train_ds, batch_sampler=batch_sampler, num_workers=args.num_workers, pin_memory=True)
         train_epoch(epoch, loader, len(loader), 0, swanlab_run, tokenizer, lm_config, base_save_path, target_modules, args.lora_rank, args.lora_alpha, lora_params)
     
-    # ========== 9. 清理分布进程 ==========
+
     if dist.is_initialized(): dist.destroy_process_group()

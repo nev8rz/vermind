@@ -87,7 +87,6 @@ def register_vermind_v_plugin():
         warnings.warn(f"Could not import vermind_models: {e}")
     
     # Register with vLLM
-    from vllm import ModelRegistry
     
     # Register VerMind-V as a separate architecture
     # Note: The actual VLM implementation would need to be completed

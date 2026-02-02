@@ -6,7 +6,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PRETRAIN_CACHE_DIR = (PROJECT_ROOT / ".cache" / "pretrain_dataset").as_posix()
 
-os.environ["TOKENIZERS_PARALLELISM"] = "false" # 防止并行 炸掉
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 class PretrainDataset(Dataset):
     def __init__(self, data_path, tokenizer, max_length=512, cache_dir=PRETRAIN_CACHE_DIR):

@@ -73,7 +73,7 @@ def main():
     )
     args = parser.parse_args()
     
-    # 初始化 OpenAI 客户端
+
     client = OpenAI(
         api_key=args.api_key,
         base_url=args.api_base
@@ -81,7 +81,7 @@ def main():
     print(f"🔗 连接到 API: {args.api_base}")
     print(f"📦 使用模型: {args.model}\n")
     
-    # 预设测试提示词
+
     prompts = [
         '写一个计算斐波那契数列的代码',
         '写一个快速排序的代码',
@@ -100,26 +100,26 @@ def main():
         '你是谁开发的？'
     ]
     
-    # 初始化对话历史
+
     conversation = []
     
-    # 选择输入模式
+
     print("\n" + "=" * 60)
     input_mode = int(input('[0] 自动测试\n[1] 手动输入\n请选择: '))
     print("=" * 60 + "\n")
     
-    # 创建提示词迭代器
+
     prompt_iter = prompts if input_mode == 0 else iter(lambda: input('💬: '), '')
     
     for prompt in prompt_iter:
         if input_mode == 0:
             print(f'💬: {prompt}')
         
-        # 管理对话历史
+
         conversation = conversation[-args.historys:] if args.historys else []
         conversation.append({"role": "user", "content": prompt})
         
-        # 生成回复
+
         print('🤖: ', end='', flush=True)
         st = time.time()
         response_text = ""
@@ -127,7 +127,7 @@ def main():
         
         try:
             if args.stream:
-                # 流式输出
+
                 stream = client.chat.completions.create(
                     model=args.model,
                     messages=conversation,
@@ -142,11 +142,11 @@ def main():
                         content = chunk.choices[0].delta.content
                         print(content, end='', flush=True)
                         response_text += content
-                    # 尝试从 usage 中获取 token 计数（通常在最后一个 chunk 中）
+
                     if hasattr(chunk, 'usage') and chunk.usage:
                         gen_tokens = chunk.usage.completion_tokens if hasattr(chunk.usage, 'completion_tokens') else 0
             else:
-                # 非流式输出
+
                 response = client.chat.completions.create(
                     model=args.model,
                     messages=conversation,
@@ -162,10 +162,10 @@ def main():
             print(f"\n❌ 错误: {e}")
             continue
         
-        # 添加到对话历史
+
         conversation.append({"role": "assistant", "content": response_text})
         
-        # 显示速度
+
         elapsed = time.time() - st
         if args.show_speed and gen_tokens > 0:
             print(f'\n[Speed]: {gen_tokens / elapsed:.2f} tokens/s ({gen_tokens} tokens in {elapsed:.2f}s)\n')

@@ -6,7 +6,6 @@ import io
 from PIL import Image
 from torch.utils.data import Dataset
 import pyarrow.parquet as pq
-from pathlib import Path
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from vermind_models import VerMindVLM, VLMConfig
@@ -41,16 +40,16 @@ class VLMDataset(Dataset):
         self.max_length = max_length
         self.image_special_token = image_special_token
         
-        # 从 config 获取 image_ids（默认 196 个 token，SigLIP 14x14）
+
         vlm_config = VLMConfig()
         self.image_ids = vlm_config.image_ids
         
-        # 加载 SigLIP processor（不需要模型，只用于图像预处理）
+
         _, self.processor = VerMindVLM.get_vision_model(vision_encoder_path)
         if self.processor is None:
             raise ValueError(f"无法加载视觉模型: {vision_encoder_path}")
         
-        # 构建 BOS/EOS 标记用于 label 生成
+
         self.bos_str = f'{tokenizer.bos_token}assistant\n'
         self.eos_str = f'{tokenizer.eos_token}\n'
         self.bos_id = tokenizer(self.bos_str, add_special_tokens=False).input_ids
@@ -79,15 +78,15 @@ class VLMDataset(Dataset):
         """
         将 <image> 的 tokenizer 输出替换为 image_ids
         """
-        # 获取 <image> 的 token id 序列
+
         image_token_ids = self.tokenizer(self.image_special_token, add_special_tokens=False).input_ids
         
         new_input_ids = []
         i = 0
         while i < len(input_ids):
-            # 检查是否匹配 image_token_ids
+
             if input_ids[i:i+len(image_token_ids)] == image_token_ids:
-                # 替换为 image_ids
+
                 new_input_ids.extend(self.image_ids)
                 i += len(image_token_ids)
             else:
@@ -107,7 +106,7 @@ class VLMDataset(Dataset):
             if input_ids[i:i + len(self.bos_id)] == self.bos_id:
                 start = i + len(self.bos_id)
                 end = start
-                # 查找 EOS
+
                 found_eos = False
                 while end < len(input_ids):
                     if input_ids[end:end + len(self.eos_id)] == self.eos_id:
@@ -116,12 +115,12 @@ class VLMDataset(Dataset):
                     end += 1
                 
                 if found_eos:
-                    # 标记 assistant 内容区域（包括 BOS 和 EOS）
+
                     for j in range(i, min(end + len(self.eos_id), len(input_ids))):
                         labels[j] = input_ids[j]
                     i = end + len(self.eos_id)
                 else:
-                    # 没有找到 EOS，标记从 BOS 到序列结束
+
                     for j in range(i, min(len(input_ids), self.max_length)):
                         labels[j] = input_ids[j]
                     i = len(input_ids)
@@ -130,28 +129,28 @@ class VLMDataset(Dataset):
         return labels
 
     def __getitem__(self, index: int):
-        # 1. 加载数据
+
         conversations = json.loads(self.table['conversations'][index].as_py())
         image_bytes = self.table['image_bytes'][index].as_py()
         
-        # 2. 处理文本
+
         prompt = self.create_chat_prompt(conversations)
-        input_ids = self.tokenizer(prompt).input_ids  # 先不截断
+        input_ids = self.tokenizer(prompt).input_ids
         
-        # 3. 将 <image> token 替换为 image_ids（插入视觉特征 token）
+
         input_ids = self.insert_image_tokens(input_ids)
         
-        # 4. 截断到 max_length（确保 image tokens 不会被截断）
+
         input_ids = input_ids[:self.max_length]
         
-        # 5. 填充到 max_length
+
         pad_len = self.max_length - len(input_ids)
         input_ids += [self.tokenizer.pad_token_id] * pad_len
         
-        # 6. 生成 labels
+
         labels = self.generate_labels(input_ids)
         
-        # 7. 处理图像 -> pixel_values
+
         image = Image.open(io.BytesIO(image_bytes))
         pixel_values = VerMindVLM.image2tensor(image, self.processor)
         

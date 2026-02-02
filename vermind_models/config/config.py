@@ -61,10 +61,10 @@ class VerMindConfig(PretrainedConfig):
        
        
         self.use_moe = use_moe
-        self.num_experts_per_tok = num_experts_per_tok  # 每个token选择的专家数量
-        self.n_routed_experts = n_routed_experts  # 总的专家数量
-        self.n_shared_experts = n_shared_experts  # 共享专家
-        self.scoring_func = scoring_func  # 评分函数，默认为'softmax'
-        self.aux_loss_alpha = aux_loss_alpha  # 辅助损失的alpha参数
-        self.seq_aux = seq_aux  # 是否在序列级别上计算辅助损失
-        self.norm_topk_prob = norm_topk_prob  # 是否标准化top-k概率
+        self.num_experts_per_tok = num_experts_per_tok
+        self.n_routed_experts = n_routed_experts
+        self.n_shared_experts = n_shared_experts
+        self.scoring_func = scoring_func
+        self.aux_loss_alpha = aux_loss_alpha
+        self.seq_aux = seq_aux
+        self.norm_topk_prob = norm_topk_prob

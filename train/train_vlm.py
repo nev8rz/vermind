@@ -3,7 +3,6 @@ VerMind-V (VLM) Pretraining Script
 视觉-语言模型预训练，冻结 Vision Encoder，只训练 Vision Proj 和 LLM
 """
 import os
-import sys
 import argparse
 import time
 import warnings
@@ -104,7 +103,7 @@ if __name__ == "__main__":
     parser.add_argument("--save_interval", type=int, default=1000, help="模型保存间隔")
     parser.add_argument("--max_checkpoints", type=int, default=3, help="最大保留的 checkpoint 数量")
     
-    # 模型参数
+
     parser.add_argument('--hidden_size', default=768, type=int, help="隐藏层维度")
     parser.add_argument('--num_hidden_layers', default=16, type=int, help="隐藏层数量")
     parser.add_argument('--num_attention_heads', default=8, type=int, help="注意力头数")
@@ -112,29 +111,29 @@ if __name__ == "__main__":
     parser.add_argument('--max_seq_len', default=512, type=int, help="训练的最大截断长度")
     parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1], help="是否使用MoE架构")
     
-    # 数据路径
+
     parser.add_argument("--data_path", type=str, required=True, help="Parquet 数据路径")
     parser.add_argument("--tokenizer_path", type=str, default="./vermind_tokenizer", help="tokenizer路径")
     parser.add_argument("--vision_encoder_path", type=str, default="./siglip-base-patch16-224", help="Vision Encoder 路径")
     
-    # 加载选项
+
     parser.add_argument('--from_weight', default='none', type=str, help="基于哪个权重训练（支持目录路径）")
     parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="是否自动检测&续训")
     parser.add_argument('--freeze_vision', default=1, type=int, choices=[0, 1], help="是否冻结 Vision Encoder（推荐冻结）")
     parser.add_argument('--freeze_llm', default=None, type=int, choices=[0, 1], help="是否冻结 LLM（默认: pretrain阶段冻结, sft阶段解冻）")
     
-    # 其他
+
     parser.add_argument("--use_swanlab", action="store_true", help="是否使用swanlab")
     parser.add_argument("--swanlab_project", type=str, default=None, help="swanlab项目名 (默认: VerMind-V-Pretrain 或 VerMind-V-SFT)")
     parser.add_argument("--use_compile", default=0, type=int, choices=[0, 1], help="是否使用torch.compile")
     args = parser.parse_args()
 
-    # ========== 1. 初始化环境和随机种子 ==========
+
     local_rank = init_distributed_mode()
     if dist.is_initialized(): args.device = f"cuda:{local_rank}"
     setup_seed(42 + (dist.get_rank() if dist.is_initialized() else 0))
     
-    # ========== 2. 配置目录、模型参数、检查ckp ==========
+
     os.makedirs(args.save_dir, exist_ok=True)
     lm_config = VLMConfig(
         hidden_size=args.hidden_size,
@@ -144,7 +143,7 @@ if __name__ == "__main__":
         use_moe=bool(args.use_moe)
     )
     
-    # 根据 stage 设置默认保存路径
+
     if args.save_dir:
         save_dir = args.save_dir
     elif args.stage == 'sft':
@@ -159,7 +158,7 @@ if __name__ == "__main__":
     else:
         save_weight = 'vlm_pretrain'
     
-    # 检查 resume checkpoint
+
     training_state = None
     resume_path = None
     if args.from_resume == 1:
@@ -173,17 +172,17 @@ if __name__ == "__main__":
                 Logger(f'Failed to resume from {resume_path}: {e}')
                 training_state = None
     
-    # ========== 3. 设置混合精度 ==========
+
     device_type = "cuda" if "cuda" in args.device else "cpu"
     dtype = torch.bfloat16 if args.dtype == "bfloat16" else torch.float16
     autocast_ctx = nullcontext() if device_type == "cpu" else torch.amp.autocast('cuda', dtype=dtype)
     
-    # ========== 4. 配置 swanlab ==========
+
     swanlab_run = None
     if args.use_swanlab and is_main_process():
         swanlab_id = training_state.get('swanlab_id') if training_state else None
         resume = 'must' if swanlab_id else None
-        # 根据 stage 设置默认项目名 (pretrain: VerMind-V-Pretrain, sft: VerMind-V-SFT)
+
         if args.swanlab_project:
             swanlab_project = args.swanlab_project
         elif args.stage == 'sft':
@@ -194,20 +193,20 @@ if __name__ == "__main__":
         swanlab.init(project=swanlab_project, name=swanlab_run_name, id=swanlab_id, resume=resume)
         swanlab_run = swanlab.get_run()
     
-    # ========== 5. 定义模型、数据、优化器 ==========
+
     if training_state is not None:
-        # 从 resume checkpoint 加载
+
         model, tokenizer, _ = load_checkpoint(resume_path, device=args.device, load_training_state=False)
         Logger('Model and tokenizer loaded from resume checkpoint')
     elif args.from_weight != 'none':
-        # 从 LLM checkpoint (如 DPO/SFT/Pretrain) 加载权重到 VLM
+
         Logger(f'Initializing VLM and loading LLM weights from: {args.from_weight}')
         
-        # 1. 先初始化完整的 VLM（包含随机的 Vision Proj）
+
         tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path)
         model = VerMindVLM(lm_config, vision_model_path=args.vision_encoder_path)
         
-        # 2. 确定要加载的 checkpoint 路径
+
         load_path = args.from_weight
         if os.path.isdir(args.from_weight):
             import glob
@@ -221,7 +220,7 @@ if __name__ == "__main__":
             else:
                 load_path = args.from_weight
         
-        # 3. 加载 LLM 部分权重（model 和 lm_head）
+
         Logger(f'Loading LLM weights from: {load_path}')
         try:
             from safetensors.torch import load_file
@@ -230,7 +229,7 @@ if __name__ == "__main__":
             Logger(f'Failed to load safetensors: {e}, trying torch.load')
             state_dict = torch.load(os.path.join(load_path, "pytorch_model.bin"), map_location='cpu')
         
-        # 加载 checkpoint 中的权重到 VLM
+
         model_state = model.state_dict()
         loaded_keys = []
         skipped_keys = []
@@ -245,7 +244,7 @@ if __name__ == "__main__":
             else:
                 skipped_keys.append(f"{key} (not in VLM)")
         
-        # 分类统计
+
         llm_keys = [k for k in loaded_keys if k.startswith('model.') or k == 'lm_head.weight']
         vision_proj_keys = [k for k in loaded_keys if k.startswith('vision_proj.')]
         vision_encoder_keys = [k for k in loaded_keys if k.startswith('vision_encoder.')]
@@ -264,13 +263,13 @@ if __name__ == "__main__":
         
         model = model.to(args.device)
     else:
-        # 从头开始训练
+
         tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path)
         model = VerMindVLM(lm_config, vision_model_path=args.vision_encoder_path)
         model = model.to(args.device)
         Logger('Model initialized from scratch')
     
-    # 🔧 修复: 如果 Vision Encoder 有 NaN，重新加载原始 SigLIP 权重
+
     if model.vision_encoder is not None and is_main_process():
         has_nan_or_inf = any(torch.isnan(p).any() or torch.isinf(p).any() 
                              for p in model.vision_encoder.parameters())
@@ -287,28 +286,28 @@ if __name__ == "__main__":
             except Exception as e:
                 Logger(f'Failed to re-load Vision Encoder: {e}')
     
-    # 根据 stage 设置默认冻结策略（--freeze_llm 可覆盖）
+
     if args.freeze_llm is not None:
-        # 用户显式指定了 --freeze_llm，使用用户设置
+
         freeze_llm = args.freeze_llm
         mode_str = "冻结 LLM" if freeze_llm == 1 else "全量训练"
         Logger(f'[Stage: {args.stage}] 用户指定: {mode_str}')
     elif args.stage == 'pretrain':
-        # Pretrain 阶段默认：冻结 LLM，只训练 projection
+
         freeze_llm = 1
         Logger(f'[Stage: Pretrain] 默认: 冻结 LLM，只训练 Vision Projection')
     else:  # sft
-        # SFT 阶段默认：解冻 LLM，全量训练
+
         freeze_llm = 0
         Logger(f'[Stage: SFT] 默认: 全量训练（包括 LLM 和 Vision Projection）')
     
-    # 冻结设置
+
     if args.freeze_vision == 1 and model.vision_encoder is not None:
         for param in model.vision_encoder.parameters():
             param.requires_grad = False
         Logger('Vision Encoder frozen')
     
-    # 冻结 LLM（梯度可以流过，但这些参数不更新）
+
     if freeze_llm == 1:
         for name, param in model.named_parameters():
             if "vision_proj" not in name:
@@ -316,10 +315,10 @@ if __name__ == "__main__":
         trainable_params_list = [p for p in model.parameters() if p.requires_grad]
         Logger('LLM frozen (only training Vision Projection)')
     else:
-        # 训练所有可训练参数
+
         trainable_params_list = [p for p in model.parameters() if p.requires_grad]
     
-    # 统计可训练参数
+
     total_params = sum(p.numel() for p in model.parameters()) / 1e6
     trainable_params = sum(p.numel() for p in trainable_params_list) / 1e6
     Logger(f'Total params: {total_params:.2f}M, Trainable: {trainable_params:.2f}M')
@@ -328,7 +327,7 @@ if __name__ == "__main__":
         model = torch.compile(model)
         Logger('torch.compile enabled')
     
-    # 数据集
+
     train_ds = VLMDataset(
         parquet_path=args.data_path,
         tokenizer=tokenizer,
@@ -339,13 +338,13 @@ if __name__ == "__main__":
     
     scaler = torch.amp.GradScaler('cuda', enabled=(args.dtype == 'float16'))
     
-    # ========== 6. 从ckp恢复状态 ==========
+
     start_epoch, start_step = 0, 0
     if training_state:
         start_epoch = training_state['epoch']
         start_step = training_state.get('step', 0)
     
-    # ========== 7. DDP包模型 ==========
+
     if dist.is_initialized():
         model._ddp_params_and_buffers_to_ignore = {"freqs_cos", "freqs_sin"}
         model = DistributedDataParallel(model, device_ids=[local_rank])
@@ -355,7 +354,7 @@ if __name__ == "__main__":
     
     optimizer = optim.AdamW(trainable_params_list, lr=args.learning_rate)
     
-    # 恢复 optimizer 状态
+
     if training_state:
         try:
             optimizer.load_state_dict(training_state['optimizer'])
@@ -363,19 +362,19 @@ if __name__ == "__main__":
         except Exception as e:
             Logger(f'Failed to restore optimizer state: {e}')
     
-    # ========== 7.5. 确定基础保存路径 ==========
+
     moe_suffix = '_moe' if lm_config.use_moe else ''
     original_save_path = f'{save_dir}/{save_weight}_{lm_config.hidden_size}{moe_suffix}'
     base_save_path = get_base_save_path(original_save_path)
     if is_main_process():
         Logger(f'Base save path determined: {os.path.basename(base_save_path)}')
     
-    # ========== 8. 开始训练 ==========
+
     for epoch in range(start_epoch, args.epochs):
         train_sampler and train_sampler.set_epoch(epoch)
         setup_seed(42 + epoch)
         
-        # 创建 DataLoader
+
         indices = torch.randperm(len(train_ds)).tolist()
         skip = start_step if (epoch == start_epoch and start_step > 0) else 0
         batch_sampler = SkipBatchSampler(train_sampler or indices, args.batch_size, skip)
@@ -393,6 +392,6 @@ if __name__ == "__main__":
         else:
             train_epoch(epoch, loader, len(loader), 0, swanlab_run, tokenizer, lm_config, base_save_path, args)
     
-    # ========== 9. 清理 ==========
+
     if dist.is_initialized():
         dist.destroy_process_group()

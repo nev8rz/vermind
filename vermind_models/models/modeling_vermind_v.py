@@ -54,7 +54,7 @@ class VerMindVLM(VerMindForCausalLM):
               
         print(f"[VerMind-V] Loading Vision Encoder: {model_path}...")
         try:
-            # 只加载 Vision Model，节省 110M 参数
+
             vision_model = SiglipVisionModel.from_pretrained(model_path)
             processor = SiglipProcessor.from_pretrained(model_path)
         except Exception as e:
@@ -74,8 +74,8 @@ class VerMindVLM(VerMindForCausalLM):
 
     @staticmethod
     def get_image_embeddings(image_tensors, vision_model):
-        # vision_model 被冻结（requires_grad=False），但我们需要在 vision_proj 中计算梯度
-        # 所以不要使用 no_grad，让梯度能够传递到 vision_proj
+
+
         outputs = vision_model(pixel_values=image_tensors)
         return outputs.last_hidden_state
 
@@ -107,7 +107,7 @@ class VerMindVLM(VerMindForCausalLM):
                     h_i = h[i]  # [seq_len, hidden]
                     img_idx = 0
                     for start_idx, end_idx in image_indices[i]:
-                        # 正确获取当前 batch 的 vision_embeds
+
                         # vision_proj shape: [batch, 196, hidden] or [1, batch, 196, hidden]
                         if vision_proj.dim() == 4:
                             current_vision_embeds = vision_proj[0, i]  # [196, hidden]
@@ -115,7 +115,7 @@ class VerMindVLM(VerMindForCausalLM):
                             current_vision_embeds = vision_proj[i]  # [196, hidden]
                         
                         if img_idx < 1:
-                            # 现在 vision_proj 输出 196 个 tokens (14x14)
+
                             h_i = torch.cat((h_i[:start_idx], current_vision_embeds, h_i[end_idx + 1:]), dim=0)[:seqlen]
                         img_idx += 1
                     new_h.append(h_i)

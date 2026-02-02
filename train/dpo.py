@@ -23,13 +23,13 @@ warnings.filterwarnings('ignore')
 
 
 def logits_to_log_probs(logits, labels):
-    # logits 转换为 log_probs
+
     # logits shape: (batch_size, seq_len, vocab_size)
     # labels shape: (batch_size, seq_len)
     # log_probs shape: (batch_size, seq_len)
-    log_probs = F.log_softmax(logits, dim=2) # 使用内置函数（避免溢出）
-    safe_labels = labels.clamp_min(0) # 确保labels不会小于0
-    log_probs_per_token = torch.gather(log_probs, dim=2, index=safe_labels.unsqueeze(2)).squeeze(-1) # 收集log_probs中对应labels的值
+    log_probs = F.log_softmax(logits, dim=2)
+    safe_labels = labels.clamp_min(0)
+    log_probs_per_token = torch.gather(log_probs, dim=2, index=safe_labels.unsqueeze(2)).squeeze(-1)
     return log_probs_per_token # (batch_size, seq_len)
 
 
@@ -189,12 +189,12 @@ if __name__ == "__main__":
     parser.add_argument("--use_compile", default=0, type=int, choices=[0, 1], help="是否使用torch.compile加速（0=否，1=是）")
     args = parser.parse_args()
 
-    # ========== 1. 初始化环境和随机种子 ==========
+
     local_rank = init_distributed_mode()
     if dist.is_initialized(): args.device = f"cuda:{local_rank}"
     setup_seed(42 + (dist.get_rank() if dist.is_initialized() else 0))
     
-    # ========== 2. 配置目录、模型参数、检查ckp ==========
+
     os.makedirs(args.save_dir, exist_ok=True)
     lm_config = VerMindConfig(
         hidden_size=args.hidden_size, 
@@ -204,7 +204,7 @@ if __name__ == "__main__":
         use_moe=bool(args.use_moe)
     )
     
-    # 检查 resume checkpoint
+
     training_state = None
     resume_path = None
     if args.from_resume == 1:
@@ -218,12 +218,12 @@ if __name__ == "__main__":
                 Logger(f'Failed to resume from {resume_path}: {e}')
                 training_state = None
     
-    # ========== 3. 设置混合精度 ==========
+
     device_type = "cuda" if "cuda" in args.device else "cpu"
     dtype = torch.bfloat16 if args.dtype == "bfloat16" else torch.float16
     autocast_ctx = nullcontext() if device_type == "cpu" else torch.amp.autocast('cuda', dtype=dtype)
     
-    # ========== 4. 配置swanlab ==========
+
     swanlab_run = None
     if args.use_swanlab and is_main_process():
         swanlab_id = training_state.get('swanlab_id') if training_state else None
@@ -232,7 +232,7 @@ if __name__ == "__main__":
         swanlab.init(project=args.swanlab_project, name=swanlab_run_name, id=swanlab_id, resume=resume)
         swanlab_run = swanlab.get_run()
     
-    # ========== 5. 加载参考模型（ref_model） ==========
+
     Logger('Loading reference model...')
     ref_tokenizer = None
     if os.path.isdir(args.ref_weight):
@@ -262,11 +262,11 @@ if __name__ == "__main__":
     if ref_tokenizer is None:
         ref_tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path)
     
-    ref_model.eval()  # 参考模型始终处于eval模式
+    ref_model.eval()
     for param in ref_model.parameters():
-        param.requires_grad = False  # 冻结参考模型参数
+        param.requires_grad = False
     
-    # ========== 6. 定义策略模型（policy model） ==========
+
     if training_state is not None:
         model, tokenizer, _ = load_checkpoint(resume_path, device=args.device, load_training_state=False)
         Logger('Model and tokenizer loaded from resume checkpoint')
@@ -300,7 +300,7 @@ if __name__ == "__main__":
         model = model.to(args.device)
         Logger('Model initialized from scratch')
     
-    # 确保tokenizer已加载
+
     if 'tokenizer' not in locals():
         tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path)
     
@@ -308,13 +308,13 @@ if __name__ == "__main__":
         model = torch.compile(model)
         Logger('torch.compile enabled')
     
-    # ========== 7. 数据加载器和优化器 ==========
+
     train_ds = DPODataset(args.data_path, tokenizer, max_length=args.max_seq_len)
     train_sampler = DistributedSampler(train_ds) if dist.is_initialized() else None
     scaler = torch.amp.GradScaler('cuda', enabled=(args.dtype == 'float16'))
     optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate)
     
-    # ========== 8. 从ckp恢复状态 ==========
+
     start_epoch, start_step = 0, 0
     if training_state:
         optimizer.load_state_dict(training_state['optimizer'])
@@ -322,22 +322,22 @@ if __name__ == "__main__":
         start_epoch = training_state['epoch']
         start_step = training_state.get('step', 0)
     
-    # ========== 9. DDP包模型 ==========
+
     if dist.is_initialized():
         model._ddp_params_and_buffers_to_ignore = {"freqs_cos", "freqs_sin"}
         model = DistributedDataParallel(model, device_ids=[local_rank])
-        # 参考模型也需要DDP包装（但保持eval模式）
+
         ref_model._ddp_params_and_buffers_to_ignore = {"freqs_cos", "freqs_sin"}
         ref_model = DistributedDataParallel(ref_model, device_ids=[local_rank])
     
-    # ========== 10. 确定基础保存路径 ==========
+
     moe_suffix = '_moe' if lm_config.use_moe else ''
     original_save_path = f'{args.save_dir}/{args.save_weight}_{lm_config.hidden_size}{moe_suffix}'
     base_save_path = get_base_save_path(original_save_path)
     if is_main_process():
         Logger(f'Base save path determined: {os.path.basename(base_save_path)}')
     
-    # ========== 11. 开始训练 ==========
+
     for epoch in range(start_epoch, args.epochs):
         train_sampler and train_sampler.set_epoch(epoch)
         setup_seed(42 + epoch)
@@ -351,5 +351,5 @@ if __name__ == "__main__":
         else:
             train_epoch(epoch, loader, len(loader), ref_model, lm_config, 0, swanlab_run, args.beta, args.dpo_aggregate, tokenizer, base_save_path)
     
-    # ========== 12. 清理分布进程 ==========
+
     if dist.is_initialized(): dist.destroy_process_group()

@@ -11,35 +11,33 @@ from ..FFN import FeedForward
 from ..config import VerMindConfig
 from ..GQA import Attention
 
-class VerMindBlock(nn.Module): # decoder
+class VerMindBlock(nn.Module):
     def __init__(self, layer_id: int, config: VerMindConfig):
         super().__init__()
-        self.num_attention_heads = config.num_attention_heads # 注意力头数
-        self.hidden_size = config.hidden_size # 隐藏层输入维度，一般也是dmodel
-        self.head_dim = config.hidden_size // config.num_attention_heads # 每个头分到的维度
-        self.self_attn = Attention(config) # 注意力
+        self.num_attention_heads = config.num_attention_heads
+        self.hidden_size = config.hidden_size
+        self.head_dim = config.hidden_size // config.num_attention_heads
+        self.self_attn = Attention(config)
 
-        self.layer_id = layer_id # block id
-        self.input_layernorm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps) # 输入rmsnorm
+        self.layer_id = layer_id
+        self.input_layernorm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
         self.post_attention_layernorm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
-        # # 输出归一化
-        # self.mlp = FeedForward(config) if not config.use_moe else MOEFeedForward(config)
-        self.mlp = FeedForward(config) # swiglu 
+        self.mlp = FeedForward(config)
 
     def forward(self, hidden_states, position_embeddings, past_key_value=None, use_cache=False, attention_mask=None, position_ids=None, cu_seqlens=None):
-        residual = hidden_states # 原始值
+        residual = hidden_states
         hidden_states, present_key_value = self.self_attn(
-            self.input_layernorm(hidden_states), # prenorm
+            self.input_layernorm(hidden_states),
             position_embeddings,
             past_key_value, 
             use_cache, 
             attention_mask,
-            position_ids=position_ids,  # 传递 position_ids 到 Attention
-            cu_seqlens=cu_seqlens  # 传递 cu_seqlens 到 Attention（用于 varlen flash attention）
-        ) # 
-        hidden_states += residual # 残差连接
-        hidden_states = hidden_states + self.mlp(self.post_attention_layernorm(hidden_states)) # prenorm -> swiglu -> 残差连接
-        return hidden_states, present_key_value # 隐藏层输入，当前kv cache
+            position_ids=position_ids,
+            cu_seqlens=cu_seqlens
+        )
+        hidden_states += residual
+        hidden_states = hidden_states + self.mlp(self.post_attention_layernorm(hidden_states))
+        return hidden_states, present_key_value
 
 
 
@@ -68,7 +66,7 @@ class VerMindModel(nn.Module):
                 cu_seqlens: Optional[torch.Tensor] = None,
                 **kwargs):
         is_varlen = (cu_seqlens is not None and 
-                     input_ids.dim() == 1)  # varlen 模式下 input_ids 应该是 1D (total_tokens,)
+                     input_ids.dim() == 1)
         
         if is_varlen:
             total_tokens = input_ids.shape[0]
@@ -77,16 +75,16 @@ class VerMindModel(nn.Module):
             batch_size, seq_length = input_ids.shape
             hidden_states = self.dropout(self.embed_tokens(input_ids))
         
-        if hasattr(past_key_values, 'layers'): past_key_values = None # 兼容，可能有的框架是用的kv cache2，这里退化了，不走kv cache了
+        if hasattr(past_key_values, 'layers'): past_key_values = None
         past_key_values = past_key_values or [None] * len(self.layers) 
         start_pos = past_key_values[0][0].shape[1] if past_key_values[0] is not None else 0
 
         position_embeddings = (
-            self.freqs_cos,  # (max_seq_len, head_dim) - 传递完整的 cos
-            self.freqs_sin   # (max_seq_len, head_dim) - 传递完整的 sin
+            self.freqs_cos,
+            self.freqs_sin
         )
 
-        presents = [] # kv cache
+        presents = []
         for layer_idx, (layer, past_key_value) in enumerate(zip(self.layers, past_key_values)):
             hidden_states, present = layer(
                 hidden_states,
@@ -94,12 +92,12 @@ class VerMindModel(nn.Module):
                 past_key_value=past_key_value,
                 use_cache=use_cache,
                 attention_mask=attention_mask,
-                position_ids=position_ids,  # 传递 position_ids 到每一层
-                cu_seqlens=cu_seqlens  # 传递 cu_seqlens 到每一层（用于 varlen flash attention）
-            ) # hidden states, kv cache
-            presents.append(present) # kv cache
+                position_ids=position_ids,
+                cu_seqlens=cu_seqlens
+            )
+            presents.append(present)
 
-        hidden_states = self.norm(hidden_states) # 输出归一化
+        hidden_states = self.norm(hidden_states)
 
         aux_loss = 0
         return hidden_states, presents, aux_loss
@@ -131,10 +129,10 @@ class VerMindForCausalLM(PreTrainedModel, GenerationMixin):
             attention_mask=attention_mask,
             past_key_values=past_key_values,
             use_cache=use_cache,
-            position_ids=position_ids,  # 传递 position_ids 到 model
-            cu_seqlens=cu_seqlens,  # 传递 cu_seqlens 到 model（用于 varlen flash attention）
+            position_ids=position_ids,
+            cu_seqlens=cu_seqlens,
             **args
-        ) # 模型输出，hidden states, kv cache, aux loss
+        )
         
         is_varlen = cu_seqlens is not None
         if is_varlen:
@@ -152,8 +150,8 @@ class VerMindForCausalLM(PreTrainedModel, GenerationMixin):
             else:
                 shift_logits = logits[..., :-1, :].contiguous()
                 shift_labels = labels[..., 1:].contiguous()
-                loss = F.cross_entropy(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1), ignore_index=-100) # 交叉熵损失
+                loss = F.cross_entropy(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1), ignore_index=-100)
 
-        output = CausalLMOutputWithPast(loss=loss, logits=logits, past_key_values=past_key_values, hidden_states=hidden_states) # 格式化输出
+        output = CausalLMOutputWithPast(loss=loss, logits=logits, past_key_values=past_key_values, hidden_states=hidden_states)
         output.aux_loss = aux_loss
         return output

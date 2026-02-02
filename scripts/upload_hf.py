@@ -5,7 +5,6 @@
 """
 
 import os
-import sys
 import shutil
 import argparse
 import tempfile
@@ -23,7 +22,7 @@ def copy_model_files(model_path: str, temp_dir: str, model_type: str):
     print(f"📦 正在收集文件从: {model_path}")
     print(f"   模型类型: {model_type.upper()}")
     
-    # 1. 验证并显示模型权重统计
+
     try:
         from safetensors.torch import load_file
         state_dict = load_file(model_path / "model.safetensors")
@@ -50,7 +49,7 @@ def copy_model_files(model_path: str, temp_dir: str, model_type: str):
     except Exception as e:
         print(f"\n⚠️  无法验证权重: {e}")
     
-    # 2. 复制 checkpoint 中的文件
+
     print(f"\n📋 复制 checkpoint 文件...")
     required_files = [
         "model.safetensors",
@@ -70,7 +69,7 @@ def copy_model_files(model_path: str, temp_dir: str, model_type: str):
         else:
             print(f"  ⚠️  跳过 (不存在): {file_name}")
     
-    # 3. 处理 config.json 并复制模型定义文件
+
     config_path = temp_path / "config.json"
     if config_path.exists():
         import json
@@ -78,7 +77,7 @@ def copy_model_files(model_path: str, temp_dir: str, model_type: str):
             config = json.load(f)
         
         if model_type == 'vlm':
-            # VLM: 注入 auto_map，不复制 vermind 定义文件
+
             print(f"\n📋 注入 VLM auto_map 到 config.json...")
             config["auto_map"] = {
                 "AutoConfig": "configuration_vermind_v.VLMConfig",
@@ -86,7 +85,7 @@ def copy_model_files(model_path: str, temp_dir: str, model_type: str):
             }
             print(f"  ✅ auto_map 已注入")
             
-            # 复制 VLM 特有文件
+
             print(f"\n📋 复制 VLM 模型定义文件...")
             vlm_files = [
                 ("vllm_adapter/vlm/configuration_vermind_v.py", "configuration_vermind_v.py"),
@@ -102,7 +101,7 @@ def copy_model_files(model_path: str, temp_dir: str, model_type: str):
                     print(f"  ❌ 缺失关键文件: {src_rel}")
                     return False
         else:
-            # LLM: 复制基础模型文件
+
             print(f"\n📋 复制 LLM 模型定义文件...")
             base_files = [
                 ("vllm_adapter/core/configuration_vermind.py", "configuration_vermind.py"),
@@ -118,7 +117,7 @@ def copy_model_files(model_path: str, temp_dir: str, model_type: str):
                     print(f"  ❌ 缺失关键文件: {src_rel}")
                     return False
         
-        # 保存修改后的 config.json
+
         with open(config_path, 'w', encoding='utf-8') as f:
             json.dump(config, f, indent=2, ensure_ascii=False)
         print(f"  ✅ config.json 已更新")
@@ -169,30 +168,30 @@ def upload_to_hf(repo_id: str, local_path: str, token: Optional[str] = None,
         print("错误: 请先安装 huggingface_hub: pip install huggingface_hub")
         return False
 
-    # 如果没有提供 token，HfApi 会自动尝试使用已登录的凭证
+
     api = HfApi(token=token)
     local_path = Path(local_path)
 
-    # 创建仓库
+
     try:
         api.create_repo(repo_id=repo_id, private=private, exist_ok=True)
         print(f"✅ 仓库就绪: https://huggingface.co/{repo_id}")
     except Exception as e:
         print(f"⚠️  创建仓库失败: {e}")
-        # 检查是否是认证错误
+
         if "401" in str(e) or "Unauthorized" in str(e):
             print(f"\n💡 提示: 请确保已登录 huggingface-cli:")
             print(f"   huggingface-cli login")
             print(f"   或提供 --token 参数")
         return False
 
-    # 上传
+
     try:
         print(f"\n📤 正在上传文件...")
         upload_folder(
             folder_path=str(local_path),
             repo_id=repo_id,
-            token=token,  # 可以是 None，会自动使用已登录的凭证
+            token=token,
             commit_message=commit_message or "Upload VerMind model",
             ignore_patterns=[".git", "__pycache__", "*.pyc", ".DS_Store", "training_state.pt"],
         )
@@ -212,13 +211,13 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
-  # 上传语言模型 (LLM)
+
   python scripts/upload_hf.py \
       --model_path /root/vermind/output/dpo/dpo_768/checkpoint_1610 \
       --repo_id your_username/vermind-dpo \
       --model_type llm
 
-  # 上传视觉语言模型 (VLM)
+
   python scripts/upload_hf.py \
       --model_path /root/vermind/output/vlm_sft/vlm_sft_768/checkpoint_29753 \
       --repo_id your_username/vermind-v-sft \
@@ -235,7 +234,7 @@ def main():
 
     args = parser.parse_args()
 
-    # 检查路径
+
     model_path = Path(args.model_path)
     if not model_path.exists():
         print(f"❌ 错误: 路径不存在: {model_path}")
@@ -245,13 +244,13 @@ def main():
         print(f"❌ 错误: 未找到 model.safetensors")
         return 1
 
-    # 获取 token (优先使用提供的，其次环境变量，最后尝试使用已登录的凭证)
+
     token = args.token or os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_TOKEN")
     if not token:
         print("ℹ️  未提供 token，尝试使用 huggingface-cli 已登录的凭证..."
     )
 
-    # 创建临时目录并复制文件
+
     with tempfile.TemporaryDirectory() as temp_dir:
         print("=" * 60)
         print("📋 步骤 1/2: 收集模型文件")

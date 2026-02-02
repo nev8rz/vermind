@@ -17,7 +17,7 @@
 
 <div align="center">
 
-**简体中文** · [English](./docs/README_en.md) · [README_v](./docs/README_v.md)
+**简体中文** · [English](./docs/README_en.md) · [README_VLM](./docs/README_v.md)
 
 </div>
 

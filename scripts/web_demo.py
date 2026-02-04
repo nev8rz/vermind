@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-VerMind-V Web Demo
-基于 Gradio 的视觉语言模型交互界面
+VerMind Web Demo
+基于 Gradio 的交互界面，支持视觉语言模型(VLM)和纯语言模型(LLM)
 """
 
 import os
@@ -18,7 +18,7 @@ from transformers import AutoTokenizer, TextIteratorStreamer
 
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from vermind_models import VerMindVLM
+from vermind_models import VerMindVLM, VerMindForCausalLM
 
 warnings.filterwarnings('ignore')
 
@@ -31,11 +31,12 @@ lm_config = None
 args = None
 
 
-def init_model(model_path, device='cuda'):
-    """初始化 VerMind-V 模型"""
+def init_model(model_path, device='cuda', mode='vlm'):
+    """初始化模型 (支持 VLM 和 LLM 模式)"""
     global model, tokenizer, preprocess, vision_model, lm_config
     
     print(f"📦 正在加载模型: {model_path}")
+    print(f"🎯 模式: {mode.upper()}")
     
 
     tokenizer = AutoTokenizer.from_pretrained(
@@ -45,19 +46,31 @@ def init_model(model_path, device='cuda'):
     )
     
 
-    model = VerMindVLM.from_pretrained(
-        model_path,
-        trust_remote_code=True,
-        local_files_only=True
-    )
-    model = model.to(device).eval()
-    
+    if mode == 'vlm':
+        model = VerMindVLM.from_pretrained(
+            model_path,
+            trust_remote_code=True,
+            local_files_only=True
+        )
+        model = model.to(device).eval()
+        
 
-    vision_model = model.vision_encoder
-    preprocess = model.processor
-    
+        vision_model = model.vision_encoder
+        preprocess = model.processor
+        
 
-    lm_config = model.params
+        lm_config = model.params
+    else:  # llm mode
+        model = VerMindForCausalLM.from_pretrained(
+            model_path,
+            trust_remote_code=True,
+            local_files_only=True
+        )
+        model = model.to(device).eval()
+        
+        vision_model = None
+        preprocess = None
+        lm_config = model.config
     
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -83,15 +96,21 @@ def insert_image_tokens(input_ids, image_token_ids, image_ids):
 
 
 def generate_response(image, prompt, temperature=0.7, top_p=0.85, max_new_tokens=512):
-    """生成回复，支持流式输出"""
+    """生成回复，支持流式输出 (VLM 和 LLM 模式)"""
     global model, tokenizer, preprocess, vision_model, lm_config, args
     
     device = args.device
+    mode = args.mode
     
 
-    messages = [
-        {"role": "user", "content": f"<image>\n{prompt}"}
-    ]
+    if mode == 'vlm':
+        messages = [
+            {"role": "user", "content": f"<image>\n{prompt}"}
+        ]
+    else:  # llm mode
+        messages = [
+            {"role": "user", "content": prompt}
+        ]
     
 
     text = tokenizer.apply_chat_template(
@@ -105,15 +124,16 @@ def generate_response(image, prompt, temperature=0.7, top_p=0.85, max_new_tokens
     input_ids_list = inputs.input_ids[0].tolist()
     
 
-    image_token_ids = tokenizer("<image>", add_special_tokens=False).input_ids
-    image_ids = lm_config.image_ids
-    input_ids_list = insert_image_tokens(input_ids_list, image_token_ids, image_ids)
+    if mode == 'vlm':
+        image_token_ids = tokenizer("<image>", add_special_tokens=False).input_ids
+        image_ids = lm_config.image_ids
+        input_ids_list = insert_image_tokens(input_ids_list, image_token_ids, image_ids)
     
 
     input_ids = torch.tensor([input_ids_list], dtype=torch.long).to(device)
     
 
-    if image is not None:
+    if mode == 'vlm' and image is not None:
         image_pil = Image.open(image).convert('RGB')
         pixel_values = VerMindVLM.image2tensor(image_pil, preprocess)
         pixel_values = pixel_values.unsqueeze(0).to(device)
@@ -125,7 +145,6 @@ def generate_response(image, prompt, temperature=0.7, top_p=0.85, max_new_tokens
     
     generation_kwargs = {
         'input_ids': input_ids,
-        'pixel_values': pixel_values,
         'max_new_tokens': max_new_tokens,
         'temperature': temperature,
         'do_sample': True,
@@ -134,6 +153,10 @@ def generate_response(image, prompt, temperature=0.7, top_p=0.85, max_new_tokens
         'eos_token_id': tokenizer.eos_token_id,
         'streamer': streamer
     }
+    
+    # Only add pixel_values for VLM mode
+    if mode == 'vlm':
+        generation_kwargs['pixel_values'] = pixel_values
     
 
     thread = Thread(target=model.generate, kwargs=generation_kwargs)
@@ -146,8 +169,8 @@ def generate_response(image, prompt, temperature=0.7, top_p=0.85, max_new_tokens
     thread.join()
 
 
-def create_demo():
-    """创建 Gradio 界面"""
+def create_demo(mode='vlm'):
+    """创建 Gradio 界面 (支持 VLM 和 LLM 模式)"""
     
 
     logo_path = Path(__file__).parent.parent / "docs" / "assets" / "vermind_logo_color.svg"
@@ -172,7 +195,11 @@ def create_demo():
     
     import gradio as gr
     
-    with gr.Blocks(title="VerMind-V", css="""
+    # Dynamic title based on mode
+    title = "VerMind-V" if mode == 'vlm' else "VerMind"
+    subtitle = "视觉语言模型交互演示" if mode == 'vlm' else "语言模型交互演示"
+    
+    with gr.Blocks(title=title, css="""
         .container { max-width: 1200px; margin: 0 auto; }
         .header { text-align: center; margin-bottom: 20px; }
         .logo-container { display: flex; align-items: center; justify-content: center; gap: 15px; }
@@ -188,10 +215,10 @@ def create_demo():
                     <span style="font-size: 36px; font-weight: bold; 
                                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                                  -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-                        VerMind-V
+                        {title}
                     </span>
                 </div>
-                <p style="color:
+                <p style="color: #666; margin-top: 10px; font-size: 14px;">{subtitle}</p>
             </div>
         """)
         
@@ -200,18 +227,52 @@ def create_demo():
         
         with gr.Row():
 
-            with gr.Column(scale=3):
-                with gr.Blocks():
+            # Only show image upload and settings in VLM mode
+            if mode == 'vlm':
+                with gr.Column(scale=3):
+                    with gr.Blocks():
 
-                    image_input = gr.Image(
-                        type="filepath",
-                        label="📷 上传图片",
-                        height=400
-                    )
-                    
+                        image_input = gr.Image(
+                            type="filepath",
+                            label="📷 上传图片",
+                            height=400
+                        )
+                        
 
+                        with gr.Group():
+                            gr.Markdown("### ⚙️ 生成参数")
+                            temperature_slider = gr.Slider(
+                                label="Temperature",
+                                minimum=0.1,
+                                maximum=1.5,
+                                value=0.7,
+                                step=0.1,
+                                info="控制生成随机性，越大越随机"
+                            )
+                            top_p_slider = gr.Slider(
+                                label="Top-P",
+                                minimum=0.1,
+                                maximum=1.0,
+                                value=0.85,
+                                step=0.05,
+                                info="Nucleus 采样阈值"
+                            )
+                            max_tokens_slider = gr.Slider(
+                                label="Max New Tokens",
+                                minimum=64,
+                                maximum=2048,
+                                value=512,
+                                step=64,
+                                info="最大生成长度"
+                            )
+                        
+
+                        clear_btn = gr.Button("🗑️ 清空对话", variant="secondary")
+            else:  # llm mode - show settings in a smaller column
+                image_input = gr.State(value=None)
+                with gr.Column(scale=2):
                     with gr.Group():
-                        gr.Markdown("##")
+                        gr.Markdown("### ⚙️ 生成参数")
                         temperature_slider = gr.Slider(
                             label="Temperature",
                             minimum=0.1,
@@ -236,8 +297,6 @@ def create_demo():
                             step=64,
                             info="最大生成长度"
                         )
-                    
-
                     clear_btn = gr.Button("🗑️ 清空对话", variant="secondary")
             
 
@@ -269,14 +328,26 @@ def create_demo():
                     submit_btn = gr.Button("发送", variant="primary", scale=1)
                 
 
-                gr.Examples(
-                    examples=[
+                # Different examples for different modes
+                if mode == 'vlm':
+                    examples = [
                         "描述一下这张图片的内容",
                         "这张图片里有什么？",
                         "图片中的主要元素是什么？",
                         "请详细描述图片中的场景",
                         "这张图片传达了什么情感或氛围？"
-                    ],
+                    ]
+                else:  # llm mode
+                    examples = [
+                        "介绍一下你自己",
+                        "什么是机器学习？",
+                        "请解释一下Transformer架构",
+                        "写一段Python代码实现快速排序",
+                        "讲一个有趣的故事"
+                    ]
+                
+                gr.Examples(
+                    examples=examples,
                     inputs=msg_input,
                     label="💡 示例问题"
                 )
@@ -305,7 +376,8 @@ def create_demo():
             
             history = _ensure_history(history)
 
-            if image_path is None:
+            # Only require image in VLM mode
+            if mode == 'vlm' and image_path is None:
                 if chatbot_format == "messages":
                     history = history + [
                         {"role": "user", "content": "请先上传图片"},
@@ -405,11 +477,13 @@ def create_demo():
         )
         
 
-        image_input.change(
-            lambda x: x,
-            inputs=image_input,
-            outputs=current_image
-        )
+        # Only attach image change event in VLM mode
+        if mode == 'vlm':
+            image_input.change(
+                lambda x: x,
+                inputs=image_input,
+                outputs=current_image
+            )
     
     return demo
 
@@ -417,12 +491,19 @@ def create_demo():
 def main():
     global args
     
-    parser = argparse.ArgumentParser(description="VerMind-V Web Demo")
+    parser = argparse.ArgumentParser(description="VerMind Web Demo")
     parser.add_argument(
         '--model_path',
         type=str,
         required=True,
         help="模型路径（包含 config.json 和模型权重的目录）"
+    )
+    parser.add_argument(
+        '--mode',
+        type=str,
+        choices=['vlm', 'llm'],
+        default='vlm',
+        help="模型模式: vlm (视觉语言模型) 或 llm (纯语言模型)"
     )
     parser.add_argument(
         '--device',
@@ -451,15 +532,15 @@ def main():
     args = parser.parse_args()
     
 
-    if not os.path.exists(args.model_path):
-        print(f"❌ 模型路径不存在: {args.model_path}")
-        sys.exit(1)
+    # if not os.path.exists(args.model_path):
+    #     print(f"❌ 模型路径不存在: {args.model_path}")
+    #     sys.exit(1)
     
 
-    init_model(args.model_path, args.device)
+    init_model(args.model_path, args.device, args.mode)
     
 
-    demo = create_demo()
+    demo = create_demo(args.mode)
     
     print(f"\n🚀 启动 Web Demo...")
     print(f"🔗 访问地址: http://{args.host}:{args.port}")

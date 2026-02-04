@@ -47,6 +47,36 @@
 | 🎮 **Proximal Policy Optimization (PPO)** | RLHF training with reward models to improve reasoning and response quality. |
 | 🎯 **Group Relative Policy Optimization (GRPO)** | Efficient RL training without a critic, using group-relative advantages. |
 
+## 🎯 Web Demo
+
+VerMind provides an easy-to-use Gradio Web Demo supporting both pure Language Model (LLM) and Vision-Language Model (VLM) modes.
+
+### LLM Mode Demo
+<div align="center">
+  <img src="https://raw.githubusercontent.com/nev8rz/vermind/main/docs/assets/llm_demo.gif" alt="LLM Demo" width="800">
+</div>
+
+### VLM Mode Demo
+<div align="center">
+  <img src="https://raw.githubusercontent.com/nev8rz/vermind/main/docs/assets/vlm_demo.gif" alt="VLM Demo" width="800">
+</div>
+
+**Launch Web Demo:**
+
+```bash
+# LLM Mode (Pure text conversation)
+python3 scripts/web_demo.py \
+    --model_path nev8r/vermind \
+    --mode llm \
+    --port 7860
+
+# VLM Mode (Image + text)
+python3 scripts/web_demo.py \
+    --model_path /path/to/vermind-v-model \
+    --mode vlm \
+    --port 7860
+```
+
 ## 🏗️ Architecture Overview
 
 VerMind's architecture is a decoder-only transformer optimized for performance and scalability. The core components are designed to be both efficient and easy to understand.

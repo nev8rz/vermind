@@ -547,6 +547,49 @@
             </div>
         </section>
 
+        <section class="demo-section" style="padding: 60px 0 100px;">
+            <div class="container">
+                <div class="section-header" style="margin-bottom: 50px;">
+                    <h2 style="font-size: 2rem; color: var(--text-primary); margin-bottom: 12px; font-weight: 700;">🎯 Interactive Web Demo</h2>
+                    <p style="color: var(--text-secondary); font-size: 1rem;">Try VerMind models directly in your browser with our Gradio-powered interface</p>
+                </div>
+                
+                <div style="max-width: 1000px; margin: 0 auto;">
+                    <!-- LLM Demo -->
+                    <div style="margin-bottom: 50px;">
+                        <h3 style="color: #a5b4fc; font-size: 1.3rem; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
+                            <span style="display: inline-block; width: 8px; height: 8px; background: #6366f1; border-radius: 50%;"></span>
+                            LLM Mode - Pure Text Conversation
+                        </h3>
+                        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; overflow: hidden;">
+                            <img src="https://raw.githubusercontent.com/nev8rz/vermind/main/docs/assets/llm_demo.gif" 
+                                 alt="LLM Demo" 
+                                 style="width: 100%; height: auto; border-radius: 12px; display: block;">
+                        </div>
+                        <div style="margin-top: 16px; padding: 16px; background: rgba(99, 102, 241, 0.05); border-left: 3px solid #6366f1; border-radius: 8px;">
+                            <code style="color: #a5b4fc; font-size: 0.9rem;">python3 scripts/web_demo.py --model_path nev8r/vermind --mode llm</code>
+                        </div>
+                    </div>
+                    
+                    <!-- VLM Demo -->
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="color: #6ee7b7; font-size: 1.3rem; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
+                            <span style="display: inline-block; width: 8px; height: 8px; background: #10b981; border-radius: 50%;"></span>
+                            VLM Mode - Vision + Language
+                        </h3>
+                        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; overflow: hidden;">
+                            <img src="https://raw.githubusercontent.com/nev8rz/vermind/main/docs/assets/vlm_demo.gif" 
+                                 alt="VLM Demo" 
+                                 style="width: 100%; height: auto; border-radius: 12px; display: block;">
+                        </div>
+                        <div style="margin-top: 16px; padding: 16px; background: rgba(16, 185, 129, 0.05); border-left: 3px solid #10b981; border-radius: 8px;">
+                            <code style="color: #6ee7b7; font-size: 0.9rem;">python3 scripts/web_demo.py --model_path /path/to/vermind-v --mode vlm</code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <section class="models-section">
             <div class="container">
                 <div class="models-grid">

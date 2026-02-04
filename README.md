@@ -50,7 +50,7 @@
 | 🎮 **近端策略优化 (PPO)** | 使用奖励模型进行 RLHF 训练，增强推理能力和回复质量。 |
 | 🎯 **组相对策略优化 (GRPO)** | 无需 Critic 模型的高效 RL 训练，使用组内相对优势进行策略优化。 |
 
-## � Web Demo
+##  Web Demo
 
 VerMind 提供了易用的 Gradio Web Demo，支持纯语言模型（LLM）和视觉语言模型（VLM）两种模式。
 
@@ -80,7 +80,7 @@ python3 scripts/web_demo.py \
     --port 7860
 ```
 
-## �🏗️ 架构概览
+## 🏗️ 架构概览
 
 VerMind 的架构是一个为性能和可扩展性而优化的仅解码器 Transformer 模型。核心组件设计得既高效又易于理解。
 
